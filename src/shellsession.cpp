@@ -88,6 +88,12 @@ void ShellSession::startSession()
 {
     if (isRunning())
         return;
+    {
+        QMutexLocker l(&m_mutex);
+        m_quit = false;
+        m_input.clear();
+        m_resizePending = false;
+    }
     m_running.store(true);
     emit runningChanged();
     start();
