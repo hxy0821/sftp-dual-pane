@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=SFTP 双栏传输
+Name[en_US]=SFTP Dual Pane
+GenericName=文件传输工具
+GenericName[en_US]=File Transfer Tool
+Comment=双栏 SFTP 文件传输工具：左本机、右远程，拖拽即传，内置 SSH 终端
+Comment[en_US]=Dual-pane SFTP file transfer: drag between local and remote, with built-in SSH terminal
+Exec=sftp-dual-pane
+Icon=sftp-dual-pane
+Terminal=false
+Categories=Network;FileTransfer;
+Keywords=sftp;ssh;scp;ftp;file;transfer;文件传输;远程;
+StartupNotify=true
+StartupWMClass=sftp-dual-pane

@@ -1,6 +1,8 @@
 build/
+dist/
 *.o
 *.user
+*.qmlc
 CMakeCache.txt
 CMakeFiles/
 Makefile
