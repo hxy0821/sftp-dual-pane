@@ -19,7 +19,9 @@ Rectangle {
 
     z: pane.dragActive ? 50 : 0
     color: "#ffffff"
-    border.color: "#d8dbe0"
+    radius: 8
+    border.width: 1
+    border.color: "#e3e7ee"
 
     function clearMulti() { pane.multiSet = [] }
     function toggleMulti(i) {
@@ -44,36 +46,42 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 6
-        spacing: 4
+        anchors.margins: 8
+        spacing: 6
 
         RowLayout {
             Layout.fillWidth: true
             spacing: 6
+
+            Rectangle {
+                Layout.preferredWidth: 8
+                Layout.preferredHeight: 8
+                radius: 4
+                color: pane.side === "remote" ? "#2fa356" : "#3a7afe"
+            }
             Label {
                 text: pane.title
                 font.bold: true
-                color: pane.side === "remote" ? "#0a8a86" : "#3366aa"
+                color: "#2b3138"
             }
-            ToolButton {
+            UiTool {
                 text: "上一级"
                 onClicked: if (pane.model) pane.model.goUp()
             }
-            TextField {
+            UiInput {
                 id: pathField
                 Layout.fillWidth: true
-                selectByMouse: true
                 placeholderText: "路径"
                 onEditingFinished: {
                     if (pane.model && text !== pane.model.currentPath)
                         pane.model.setDir(text)
                 }
             }
-            ToolButton { text: "刷新"; onClicked: if (pane.model) pane.model.refresh() }
-            ToolButton { text: "新建"; onClicked: mkdirDialog.openFor() }
+            UiTool { text: "刷新"; onClicked: if (pane.model) pane.model.refresh() }
+            UiTool { text: "新建"; onClicked: mkdirDialog.openFor() }
         }
 
-        Rectangle { Layout.fillWidth: true; height: 1; color: "#e2e5e9" }
+        Rectangle { Layout.fillWidth: true; height: 1; color: "#eef1f4" }
 
         ListView {
             id: listView
@@ -82,7 +90,15 @@ Rectangle {
             clip: true
             model: pane.model
             boundsBehavior: Flickable.StopAtBounds
-            ScrollBar.vertical: ScrollBar { }
+            ScrollBar.vertical: ScrollBar {
+                id: vbar
+                contentItem: Rectangle {
+                    implicitWidth: 8
+                    radius: 4
+                    color: vbar.pressed ? "#98a2b0" : "#cbd3de"
+                    visible: vbar.active
+                }
+            }
 
             MouseArea {
                 id: emptyArea
@@ -101,38 +117,72 @@ Rectangle {
 
             delegate: Rectangle {
                 width: listView.width
-                height: 34
+                height: 32
+                radius: 6
                 color: {
                     if (listView.currentIndex === index)
-                        return "#2f6fdb"
+                        return "#e9f0ff"
                     if (pane.multiSet.indexOf(index) >= 0)
-                        return "#cfe0f7"
-                    return index % 2 === 0 ? "#ffffff" : "#f7f8fa"
+                        return "#f0f5ff"
+                    if (ma.containsMouse)
+                        return "#f3f6fb"
+                    return index % 2 === 0 ? "#ffffff" : "#fafbfd"
                 }
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 10
-                    anchors.rightMargin: 10
-                    spacing: 8
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 12
+                    spacing: 10
 
-                    Rectangle {
-                        width: 12; height: 12; radius: 2
-                        color: model.isDir ? "#e8a33d" : "#9aa5b1"
+                    // 图标：文件夹用两块矩形拼形状，文件按扩展名配色
+                    Item {
+                        Layout.preferredWidth: 16
+                        Layout.preferredHeight: 16
+
+                        Item {
+                            visible: model.isDir
+                            anchors.fill: parent
+
+                            Rectangle {
+                                x: 0
+                                y: 0
+                                width: 9
+                                height: 5
+                                radius: 1
+                                color: "#e9a52f"
+                            }
+                            Rectangle {
+                                y: 3
+                                width: 16
+                                height: 12
+                                radius: 3
+                                color: "#f7b955"
+                            }
+                        }
+                        Rectangle {
+                            visible: !model.isDir
+                            anchors.centerIn: parent
+                            width: 12
+                            height: 13
+                            radius: 3
+                            color: Utils.typeColor(model.name)
+                        }
                     }
+
                     Label {
                         Layout.fillWidth: true
                         text: model.name
                         elide: Text.ElideMiddle
                         font.bold: model.isDir
-                        color: listView.currentIndex === index ? "white"
-                                                               : (model.isDir ? "#1a4e8a" : "#24292e")
+                        color: listView.currentIndex === index ? "#1d5fd6"
+                             : model.isDir ? "#1a4e8a" : "#2b3138"
                     }
                     Label {
                         visible: !model.isDir
                         text: Utils.formatBytes(model.size)
                         font.pixelSize: 12
-                        color: listView.currentIndex === index ? "#dce6f5" : "#6a737d"
+                        color: listView.currentIndex === index ? "#5a83d8" : "#8a93a0"
                     }
                 }
 
@@ -225,14 +275,14 @@ Rectangle {
         y: (pane.height - height) / 2
                 visible: listView.count === 0
                 text: (pane.side === "remote" && !pane.remoteReady) ? "未连接远程主机" : "（空目录）"
-                color: "#999999"
+                color: "#9aa3b0"
             }
         }
 
         RowLayout {
             Label {
                 text: (listView.count || 0) + " 项"
-                color: "#888888"
+                color: "#8a93a0"
                 font.pixelSize: 11
             }
         }
@@ -245,9 +295,9 @@ Rectangle {
         z: 999
         width: 160
         height: 32
-        radius: 5
-        color: "#2d7dd2"
-        opacity: 0.92
+        radius: 8
+        color: "#3a7afe"
+        opacity: 0.94
         Label {
             anchors.fill: parent
             horizontalAlignment: Text.AlignHCenter
@@ -272,6 +322,16 @@ Rectangle {
     Menu {
         id: ctxMenu
         property int row: -1
+        topPadding: 4
+        bottomPadding: 4
+        leftPadding: 4
+        rightPadding: 4
+        background: Rectangle {
+            radius: 8
+            color: "#ffffff"
+            border.width: 1
+            border.color: "#dfe4ec"
+        }
 
         MenuItem {
             text: pane.side === "remote" ? "下载到本地" : "上传到远程"
@@ -305,6 +365,16 @@ Rectangle {
 
     Menu {
         id: emptyMenu
+        topPadding: 4
+        bottomPadding: 4
+        leftPadding: 4
+        rightPadding: 4
+        background: Rectangle {
+            radius: 8
+            color: "#ffffff"
+            border.width: 1
+            border.color: "#dfe4ec"
+        }
         MenuItem { text: "新建文件夹"; onTriggered: mkdirDialog.openFor() }
         MenuItem { text: "新建文件"; onTriggered: newFileDialog.openFor() }
         MenuSeparator { }
@@ -315,16 +385,39 @@ Rectangle {
         id: mkdirDialog
         modal: true
         title: "新建文件夹"
-        standardButtons: Dialog.Ok | Dialog.Cancel
+        padding: 14
         parent: pane
         x: (pane.width - width) / 2
         y: (pane.height - height) / 2
+
+        background: Rectangle {
+            radius: 10
+            color: "#ffffff"
+            border.width: 1
+            border.color: "#e3e7ee"
+        }
+        header: Label {
+            text: mkdirDialog.title
+            font.pixelSize: 14
+            font.bold: true
+            color: "#2b3138"
+            leftPadding: 14
+            topPadding: 12
+            bottomPadding: 4
+        }
+        footer: RowLayout {
+            spacing: 8
+            Item { Layout.fillWidth: true }
+            UiButton { text: "取消"; onClicked: mkdirDialog.reject() }
+            UiButton { primary: true; text: "创建"; onClicked: mkdirDialog.accept() }
+        }
+
         ColumnLayout {
             spacing: 10
             Label {
                 text: "在当前目录下创建新文件夹"
                 font.pixelSize: 13
-                color: "#555555"
+                color: "#5a6472"
                 wrapMode: Text.Wrap
                 Layout.preferredWidth: 340
                 Layout.maximumWidth: 340
@@ -332,12 +425,12 @@ Rectangle {
             Label {
                 text: pane.model ? pane.model.currentPath : ""
                 font.pixelSize: 11
-                color: "#999999"
+                color: "#9aa3b0"
                 elide: Text.ElideMiddle
                 Layout.preferredWidth: 340
                 Layout.maximumWidth: 340
             }
-            TextField {
+            UiInput {
                 id: mkdirField
                 Layout.preferredWidth: 340
                 Layout.maximumWidth: 340
@@ -357,16 +450,39 @@ Rectangle {
         id: newFileDialog
         modal: true
         title: "新建文件"
-        standardButtons: Dialog.Ok | Dialog.Cancel
+        padding: 14
         parent: pane
         x: (pane.width - width) / 2
         y: (pane.height - height) / 2
+
+        background: Rectangle {
+            radius: 10
+            color: "#ffffff"
+            border.width: 1
+            border.color: "#e3e7ee"
+        }
+        header: Label {
+            text: newFileDialog.title
+            font.pixelSize: 14
+            font.bold: true
+            color: "#2b3138"
+            leftPadding: 14
+            topPadding: 12
+            bottomPadding: 4
+        }
+        footer: RowLayout {
+            spacing: 8
+            Item { Layout.fillWidth: true }
+            UiButton { text: "取消"; onClicked: newFileDialog.reject() }
+            UiButton { primary: true; text: "创建"; onClicked: newFileDialog.accept() }
+        }
+
         ColumnLayout {
             spacing: 10
             Label {
                 text: "在当前目录下创建空文件"
                 font.pixelSize: 13
-                color: "#555555"
+                color: "#5a6472"
                 wrapMode: Text.Wrap
                 Layout.preferredWidth: 340
                 Layout.maximumWidth: 340
@@ -374,12 +490,12 @@ Rectangle {
             Label {
                 text: pane.model ? pane.model.currentPath : ""
                 font.pixelSize: 11
-                color: "#999999"
+                color: "#9aa3b0"
                 elide: Text.ElideMiddle
                 Layout.preferredWidth: 340
                 Layout.maximumWidth: 340
             }
-            TextField {
+            UiInput {
                 id: newFileField
                 Layout.preferredWidth: 340
                 Layout.maximumWidth: 340
@@ -399,16 +515,39 @@ Rectangle {
         id: renameDialog
         modal: true
         title: "重命名"
-        standardButtons: Dialog.Ok | Dialog.Cancel
+        padding: 14
         parent: pane
         x: (pane.width - width) / 2
         y: (pane.height - height) / 2
         property int row: -1
+
+        background: Rectangle {
+            radius: 10
+            color: "#ffffff"
+            border.width: 1
+            border.color: "#e3e7ee"
+        }
+        header: Label {
+            text: renameDialog.title
+            font.pixelSize: 14
+            font.bold: true
+            color: "#2b3138"
+            leftPadding: 14
+            topPadding: 12
+            bottomPadding: 4
+        }
+        footer: RowLayout {
+            spacing: 8
+            Item { Layout.fillWidth: true }
+            UiButton { text: "取消"; onClicked: renameDialog.reject() }
+            UiButton { primary: true; text: "重命名"; onClicked: renameDialog.accept() }
+        }
+
         ColumnLayout {
             spacing: 8
-            TextField {
+            UiInput {
                 id: renameField
-                width: 260
+                Layout.preferredWidth: 280
                 placeholderText: "新名称"
                 onAccepted: renameDialog.accept()
             }
@@ -427,15 +566,39 @@ Rectangle {
         id: confirmDelete
         modal: true
         title: "删除确认"
-        standardButtons: Dialog.Yes | Dialog.No
+        padding: 14
         parent: pane
         x: (pane.width - width) / 2
         y: (pane.height - height) / 2
         property int row: -1
         property string message: ""
+
+        background: Rectangle {
+            radius: 10
+            color: "#ffffff"
+            border.width: 1
+            border.color: "#e3e7ee"
+        }
+        header: Label {
+            text: confirmDelete.title
+            font.pixelSize: 14
+            font.bold: true
+            color: "#2b3138"
+            leftPadding: 14
+            topPadding: 12
+            bottomPadding: 4
+        }
+        footer: RowLayout {
+            spacing: 8
+            Item { Layout.fillWidth: true }
+            UiButton { text: "取消"; onClicked: confirmDelete.reject() }
+            UiButton { danger: true; text: "删除"; onClicked: confirmDelete.accept() }
+        }
+
         Label {
             width: 300
             wrapMode: Text.Wrap
+            color: "#3a414a"
             text: confirmDelete.message
         }
         onAccepted: if (pane.model) pane.model.removeAt(confirmDelete.row)

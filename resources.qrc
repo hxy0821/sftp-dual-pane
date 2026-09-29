@@ -2,6 +2,11 @@
     <qresource prefix="/">
         <file>qml/main.qml</file>
         <file>qml/FilePane.qml</file>
+        <file>qml/UiButton.qml</file>
+        <file>qml/UiTool.qml</file>
+        <file>qml/UiInput.qml</file>
+        <file>qml/UiCombo.qml</file>
+        <file>qml/UiCheck.qml</file>
         <file>qml/utils.js</file>
     </qresource>
 </RCC>

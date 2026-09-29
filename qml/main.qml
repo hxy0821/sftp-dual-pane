@@ -12,12 +12,14 @@ ApplicationWindow {
     minimumWidth: 980
     minimumHeight: 600
     title: "双栏文件传输 - SFTP"
+    color: "#eef1f5"
+    font.pixelSize: 13
 
     property bool remoteReady: browse.connected
     property bool connecting: false
     property string logText: ""
     property string termStatusText: "未连接"
-    property string termStatusColor: "#808080"
+    property string termStatusColor: "#8a93a0"
     property int termInputStart: 0
     // 当前表单实际载入的已保存连接名；为空表示表单是手动输入的新连接。
     // 下拉框的高亮始终跟随它，保证“看到的名字”和“表单里的值”一致
@@ -223,7 +225,7 @@ ApplicationWindow {
         }
         onSessionStarted: {
             termStatusText = "已连接"
-            termStatusColor = "#7fae5a"
+            termStatusColor = "#5fc178"
             log("终端已连接")
             // 新会话：清空终端并重置输入行起点
             termOut.remove(0, termOut.length)
@@ -231,7 +233,7 @@ ApplicationWindow {
         }
         onSessionClosed: {
             termStatusText = "已断开"
-            termStatusColor = "#c06060"
+            termStatusColor = "#e06c6c"
             log("终端已关闭: " + reason)
         }
     }
@@ -278,95 +280,111 @@ ApplicationWindow {
         anchors.margins: 8
         spacing: 8
 
-        // 连接栏
-        RowLayout {
+        // 连接栏（卡片）
+        Rectangle {
             Layout.fillWidth: true
-            spacing: 6
+            implicitHeight: connRow.implicitHeight + 16
+            radius: 8
+            color: "#ffffff"
+            border.width: 1
+            border.color: "#e3e7ee"
 
-            ComboBox {
-                id: savedCombo
-                Layout.preferredWidth: 170
-                displayText: currentIndex < 0 ? "已保存连接" : currentText
-                onActivated: applySaved(index, true)
-                popup.onClosed: savedCombo.focus = false
-            }
-            ToolButton { text: "保存"; onClicked: saveDialog.openForSave() }
-            ToolButton {
-                text: "删除"
-                onClicked: {
-                    if (savedCombo.currentIndex >= 0) {
-                        var name = savedCombo.model[savedCombo.currentIndex]
-                        settingsStore.removeConnection(name)
-                        if (loadedConnection === name)
-                            loadedConnection = ""
-                        refreshSaved()
+            RowLayout {
+                id: connRow
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 6
+
+                UiCombo {
+                    id: savedCombo
+                    Layout.preferredWidth: 190
+                    displayText: currentIndex < 0 ? "已保存连接" : currentText
+                    onActivated: applySaved(index, true)
+                    popup.onClosed: savedCombo.focus = false
+                }
+                UiTool { text: "保存"; onClicked: saveDialog.openForSave() }
+                UiTool {
+                    text: "删除"
+                    onClicked: {
+                        if (savedCombo.currentIndex >= 0) {
+                            var name = savedCombo.model[savedCombo.currentIndex]
+                            settingsStore.removeConnection(name)
+                            if (loadedConnection === name)
+                                loadedConnection = ""
+                            refreshSaved()
+                        }
                     }
                 }
-            }
-            ToolButton {
-                text: "新建连接"
-                onClicked: {
-                    if (browse.connected)
-                        doDisconnect()
-                    hostField.text = ""
-                    portField.text = "22"
-                    userField.text = ""
-                    passField.text = ""
-                    clearLoaded()
-                    hostField.forceActiveFocus()
+                UiTool {
+                    text: "新建连接"
+                    onClicked: {
+                        if (browse.connected)
+                            doDisconnect()
+                        hostField.text = ""
+                        portField.text = "22"
+                        userField.text = ""
+                        passField.text = ""
+                        clearLoaded()
+                        hostField.forceActiveFocus()
+                    }
                 }
-            }
 
-            ToolSeparator { }
-
-            Label { text: "主机" }
-            TextField {
-                id: hostField
-                Layout.preferredWidth: 150
-                placeholderText: "IP 或主机名"
-                selectByMouse: true
-                onTextEdited: clearLoaded()
-            }
-            Label { text: "端口" }
-            TextField {
-                id: portField
-                Layout.preferredWidth: 60
-                text: "22"
-                selectByMouse: true
-                onTextEdited: clearLoaded()
-            }
-            Label { text: "用户" }
-            TextField {
-                id: userField
-                Layout.preferredWidth: 110
-                placeholderText: "用户名"
-                selectByMouse: true
-                onTextEdited: clearLoaded()
-            }
-            Label { text: "密码" }
-            TextField {
-                id: passField
-                Layout.preferredWidth: 130
-                echoMode: TextInput.Password
-                placeholderText: "密码"
-                selectByMouse: true
-                onTextEdited: clearLoaded()
-            }
-            Button {
-                id: connectButton
-                text: connecting ? "连接中…" : (browse.connected ? "断开" : "连接")
-                highlighted: true
-                onClicked: {
-                    if (connecting) { log("正在连接中，请稍候…"); return }
-                    browse.connected ? doDisconnect() : doConnect()
+                ToolSeparator {
+                    contentItem: Rectangle {
+                        implicitWidth: 1
+                        implicitHeight: 20
+                        color: "#dde2e9"
+                    }
                 }
-            }
-            CheckBox {
-                id: hiddenBox
-                text: "隐藏文件"
-                onToggled: {
-                    localModel.showHidden = checked
-                    remoteModel.showHidden = checked
+
+                Label { text: "主机"; color: "#5a6472" }
+                UiInput {
+                    id: hostField
+                    Layout.preferredWidth: 150
+                    placeholderText: "IP 或主机名"
+                    onTextEdited: clearLoaded()
+                }
+                Label { text: "端口"; color: "#5a6472" }
+                UiInput {
+                    id: portField
+                    Layout.preferredWidth: 60
+                    text: "22"
+                    onTextEdited: clearLoaded()
+                }
+                Label { text: "用户"; color: "#5a6472" }
+                UiInput {
+                    id: userField
+                    Layout.preferredWidth: 110
+                    placeholderText: "用户名"
+                    onTextEdited: clearLoaded()
+                }
+                Label { text: "密码"; color: "#5a6472" }
+                UiInput {
+                    id: passField
+                    Layout.preferredWidth: 130
+                    echoMode: TextInput.Password
+                    placeholderText: "密码"
+                    onTextEdited: clearLoaded()
+                }
+                UiButton {
+                    id: connectButton
+                    Layout.preferredWidth: 84
+                    text: connecting ? "连接中…" : (browse.connected ? "断开" : "连接")
+                    primary: !browse.connected
+                    danger: browse.connected
+                    onClicked: {
+                        if (connecting) { log("正在连接中，请稍候…"); return }
+                        browse.connected ? doDisconnect() : doConnect()
+                    }
+                }
+                Item { Layout.preferredWidth: 2 }
+                UiCheck {
+                    id: hiddenBox
+                    text: "隐藏文件"
+                    onToggled: {
+                        localModel.showHidden = checked
+                        remoteModel.showHidden = checked
+                    }
                 }
             }
         }
@@ -419,14 +437,15 @@ ApplicationWindow {
                 Label {
                     id: progressLabel
                     text: "空闲"
+                    color: "#7b8494"
                     Layout.fillWidth: true
                     elide: Text.ElideRight
                 }
-                Button {
+                UiButton {
                     text: termPanel.visible ? "关闭终端" : "终端"
                     onClicked: toggleTerminal()
                 }
-                Button {
+                UiButton {
                     text: logArea.visible ? "隐藏日志" : "日志"
                     onClicked: logArea.visible = !logArea.visible
                 }
@@ -437,7 +456,8 @@ ApplicationWindow {
                 visible: logArea.visible
                 Layout.fillWidth: true
                 Layout.preferredHeight: 6
-                color: "#c0c4ca"
+                radius: 3
+                color: "#dde2e9"
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.SplitVCursor
@@ -466,8 +486,15 @@ ApplicationWindow {
                 selectByMouse: true
                 wrapMode: TextArea.Wrap
                 text: root.logText
-                color: "#d4d4d4"
-                background: Rectangle { color: "#1e1e1e" }
+                color: "#c9d3df"
+                font.family: "monospace"
+                font.pixelSize: 12
+                background: Rectangle {
+                    radius: 8
+                    color: "#1c2128"
+                    border.width: 1
+                    border.color: "#2c333d"
+                }
                 onTextChanged: cursorPosition = length
             }
 
@@ -477,12 +504,14 @@ ApplicationWindow {
                 visible: false
                 Layout.fillWidth: true
                 Layout.preferredHeight: 220
-                color: "#141414"
-                border.color: "#3a3a3a"
+                radius: 8
+                color: "#171b21"
+                border.width: 1
+                border.color: "#2c333d"
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 6
+                    anchors.margins: 8
                     spacing: 4
 
                     RowLayout {
@@ -490,7 +519,7 @@ ApplicationWindow {
                         spacing: 8
                         Label {
                             text: "终端"
-                            color: "#d4d4d4"
+                            color: "#d9e1ea"
                             font.bold: true
                         }
                         Rectangle {
@@ -505,12 +534,12 @@ ApplicationWindow {
                         }
                         Label {
                             text: "· 直接敲键盘输入命令，回车执行"
-                            color: "#6a6a6a"
+                            color: "#78828e"
                             font.pixelSize: 11
                         }
                         Item { Layout.fillWidth: true }
-                        ToolButton { text: "清空"; onClicked: { termOut.remove(0, termOut.length); termInputStart = 0 } }
-                        ToolButton { text: "关闭"; onClicked: closeTerminal() }
+                        UiTool { dark: true; text: "清空"; onClicked: { termOut.remove(0, termOut.length); termInputStart = 0 } }
+                        UiTool { dark: true; text: "关闭"; onClicked: closeTerminal() }
                     }
 
                     TextArea {
@@ -520,8 +549,11 @@ ApplicationWindow {
                         readOnly: !shell.running
                         selectByMouse: true
                         wrapMode: TextArea.NoWrap
-                        color: "#d4d4d4"
-                        background: Rectangle { color: "#101010" }
+                        color: "#c9d3df"
+                        background: Rectangle {
+                            radius: 6
+                            color: "#101419"
+                        }
                         font.family: "monospace"
                         font.pixelSize: 13
                         onTextChanged: cursorPosition = length
@@ -579,17 +611,41 @@ ApplicationWindow {
         id: saveDialog
         modal: true
         title: "保存连接"
-        standardButtons: Dialog.Save | Dialog.Cancel
+        padding: 14
         x: (root.width - width) / 2
         y: (root.height - height) / 2
+
+        background: Rectangle {
+            radius: 10
+            color: "#ffffff"
+            border.width: 1
+            border.color: "#e3e7ee"
+        }
+        header: Label {
+            text: saveDialog.title
+            font.pixelSize: 14
+            font.bold: true
+            color: "#2b3138"
+            leftPadding: 14
+            topPadding: 12
+            bottomPadding: 4
+        }
+        footer: RowLayout {
+            spacing: 8
+            Item { Layout.fillWidth: true }
+            UiButton { text: "取消"; onClicked: saveDialog.reject() }
+            UiButton { primary: true; text: "保存"; onClicked: saveDialog.accept() }
+        }
+
         ColumnLayout {
             spacing: 8
-            TextField {
+            UiInput {
                 id: saveNameField
-                width: 240
+                Layout.preferredWidth: 260
                 placeholderText: "连接名称（如：测试机）"
+                onAccepted: saveDialog.accept()
             }
-            CheckBox {
+            UiCheck {
                 id: savePassBox
                 text: "记住密码（明文存于本机配置，仅自用）"
                 checked: true
