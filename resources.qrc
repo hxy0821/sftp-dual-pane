@@ -7,6 +7,7 @@
         <file>qml/UiInput.qml</file>
         <file>qml/UiCombo.qml</file>
         <file>qml/UiCheck.qml</file>
+        <file>qml/TransferProgress.qml</file>
         <file>qml/utils.js</file>
     </qresource>
 </RCC>

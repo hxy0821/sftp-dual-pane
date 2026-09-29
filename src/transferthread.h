@@ -42,9 +42,12 @@ public:
     Q_INVOKABLE void enqueueUpload(const QStringList &localPaths, const QString &remoteDir);
     Q_INVOKABLE void enqueueDownload(const QStringList &remotePaths, const QString &localDir);
     Q_INVOKABLE void disconnectRemote();
+    Q_INVOKABLE void pauseTransfer();
+    Q_INVOKABLE void resumeTransfer();
+    Q_INVOKABLE void abortTransfer();
 
 signals:
-    void taskStarted(const QString &label);
+    void taskStarted(const QString &label, bool upload);
     void progress(const QString &label, qint64 done, qint64 total);
     void taskFinished(const QString &label, bool ok, const QString &message);
     void taskDone(bool upload, bool ok);
@@ -65,12 +68,16 @@ private:
                           QVector<PlanItem> &plan, qint64 &total);
     void collectRemotePlan(SftpClient &client, const QString &remotePath, const QString &localDir,
                            QVector<PlanItem> &plan, qint64 &total, QString &err);
+    void waitIfPaused();
+    bool abortRequested();
 
     QMutex m_mutex;
     QWaitCondition m_cond;
     QQueue<TransferTask> m_queue;
     bool m_quit = false;
     bool m_disconnectRequested = false;
+    bool m_paused = false;
+    bool m_abortRequested = false;
 
     QString m_host;
     quint16 m_port = 22;

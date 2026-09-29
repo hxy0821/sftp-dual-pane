@@ -9,15 +9,17 @@ ApplicationWindow {
     visible: true
     width: 1280
     height: 800
-    minimumWidth: 980
-    minimumHeight: 600
+    // 连接栏完整宽度约 1215px（含边距），最小窗口宽度不能低于它，否则控件被裁剪
+    minimumWidth: 1220
+    minimumHeight: 620
     title: "双栏文件传输 - SFTP"
     color: "#eef1f5"
     font.pixelSize: 13
 
     property bool remoteReady: browse.connected
     property bool connecting: false
-    property string logText: ""
+    property string statusMsg: ""
+    property color statusMsgColor: "#7b8494"
     property string termStatusText: "未连接"
     property string termStatusColor: "#8a93a0"
     property int termInputStart: 0
@@ -29,13 +31,15 @@ ApplicationWindow {
         return (p && p.length) ? p : "/"
     }
 
+    // 底部单行状态消息：✘ 开头显示红色，✔ 开头显示绿色
     function log(msg) {
-        var t = new Date()
-        var stamp = Utils.pad2(t.getHours()) + ":" + Utils.pad2(t.getMinutes()) + ":" + Utils.pad2(t.getSeconds())
-        var line = "[" + stamp + "] " + msg
-        logText = logText ? (logText + "\n" + line) : line
-        if (logText.length > 8000)
-            logText = logText.substring(logText.length - 8000)
+        statusMsg = msg
+        if (msg.indexOf("✘") === 0)
+            statusMsgColor = "#d5494e"
+        else if (msg.indexOf("✔") === 0)
+            statusMsgColor = "#2fa356"
+        else
+            statusMsgColor = "#7b8494"
     }
 
     function refreshSaved() {
@@ -92,6 +96,11 @@ ApplicationWindow {
             shell.closeSession()
         browse.disconnect()
         log("已断开连接")
+        // 断开连接会中断在途传输，进度条立即置红提示
+        if (progressArea.active && !progressArea.finished) {
+            progressArea.taskAborted()
+            log("✘ 连接已断开，传输已中断")
+        }
     }
 
     function startTransfer(src, dst, paths) {
@@ -214,7 +223,12 @@ ApplicationWindow {
         }
         onDisconnected: {
             connecting = false
-            log("远程连接已断开")
+            if (progressArea.active && !progressArea.finished) {
+                progressArea.taskAborted()
+                log("✘ 连接已断开，传输已中断")
+            } else {
+                log("远程连接已断开")
+            }
         }
     }
 
@@ -241,10 +255,21 @@ ApplicationWindow {
     TransferThread {
         id: transfer
         onTaskStarted: {
-            progressLabel.text = label
+            progressArea.beginTask(label, upload)
+            log(label)
         }
+        onProgress: progressArea.setProgress(done, total)
         onTaskFinished: {
-            log((ok ? "✔ " : "✘ ") + label + " — " + message)
+            if (ok) {
+                progressArea.taskSucceeded()
+                log("✔ " + label + " — " + message)
+            } else {
+                if (message.indexOf("已中断") >= 0)
+                    progressArea.taskAborted()
+                else
+                    progressArea.taskFailed()
+                log("✘ " + label + " — " + message)
+            }
         }
         onTaskDone: {
             if (ok) {
@@ -253,9 +278,6 @@ ApplicationWindow {
                 else
                     localModel.refresh()
             }
-        }
-        onAllFinished: {
-            progressLabel.text = "空闲"
         }
     }
 
@@ -386,6 +408,8 @@ ApplicationWindow {
                         remoteModel.showHidden = checked
                     }
                 }
+                // 吸收窗口多余宽度，防止 RowLayout 把空隙摊进各控件之间
+                Item { Layout.fillWidth: true }
             }
         }
 
@@ -422,7 +446,7 @@ ApplicationWindow {
         }
     }
 
-    // ---------- 底部：进度 + 日志 + 终端 ----------
+    // ---------- 底部：传输进度 + 终端 ----------
     footer: Item {
         implicitHeight: footerCol.implicitHeight + footerCol.anchors.topMargin + footerCol.anchors.bottomMargin
         ColumnLayout {
@@ -434,68 +458,40 @@ ApplicationWindow {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
-                Label {
-                    id: progressLabel
-                    text: "空闲"
-                    color: "#7b8494"
+
+                TransferProgress {
+                    id: progressArea
                     Layout.fillWidth: true
-                    elide: Text.ElideRight
+                    visible: active
+                    onTogglePause: {
+                        if (paused) {
+                            paused = false
+                            transfer.resumeTransfer()
+                        } else {
+                            paused = true
+                            transfer.pauseTransfer()
+                        }
+                    }
+                    onAbortClicked: {
+                        progressArea.taskAborted()
+                        transfer.abortTransfer()
+                    }
                 }
+                Item { Layout.fillWidth: true; visible: !progressArea.visible }
+
                 UiButton {
                     text: termPanel.visible ? "关闭终端" : "终端"
                     onClicked: toggleTerminal()
                 }
-                UiButton {
-                    text: logArea.visible ? "隐藏日志" : "日志"
-                    onClicked: logArea.visible = !logArea.visible
-                }
             }
 
-            Rectangle {
-                id: logResizeHandle
-                visible: logArea.visible
-                Layout.fillWidth: true
-                Layout.preferredHeight: 6
-                radius: 3
-                color: "#dde2e9"
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.SplitVCursor
-                    property real startY: 0
-                    property real startH: 0
-                    onPressed: {
-                        startH = logArea.height
-                        startY = mapToItem(null, mouse.x, mouse.y).y
-                    }
-                    onPositionChanged: {
-                        if (!pressed)
-                            return
-                        var cy = mapToItem(null, mouse.x, mouse.y).y
-                        var nh = startH - (cy - startY)
-                        logArea.Layout.preferredHeight = Math.max(40, Math.min(nh, 500))
-                    }
-                }
-            }
-
-            TextArea {
-                id: logArea
-                visible: false
-                Layout.fillWidth: true
-                Layout.preferredHeight: 120
-                readOnly: true
-                selectByMouse: true
-                wrapMode: TextArea.Wrap
-                text: root.logText
-                color: "#c9d3df"
-                font.family: "monospace"
+            Label {
+                visible: statusMsg !== ""
+                text: statusMsg
+                color: statusMsgColor
                 font.pixelSize: 12
-                background: Rectangle {
-                    radius: 8
-                    color: "#1c2128"
-                    border.width: 1
-                    border.color: "#2c333d"
-                }
-                onTextChanged: cursorPosition = length
+                elide: Text.ElideRight
+                Layout.fillWidth: true
             }
 
             // 终端面板

@@ -51,9 +51,46 @@ void TransferThread::disconnectRemote()
     {
         QMutexLocker lock(&m_mutex);
         m_disconnectRequested = true;
+        m_abortRequested = true;   // 断开连接时同时中断在途传输
         m_queue.clear();
     }
     m_cond.wakeAll();
+}
+
+void TransferThread::abortTransfer()
+{
+    QMutexLocker lock(&m_mutex);
+    m_abortRequested = true;
+    m_paused = false;          // 暂停中也允许中断
+    m_queue.clear();
+    m_cond.wakeAll();
+}
+
+bool TransferThread::abortRequested()
+{
+    QMutexLocker lock(&m_mutex);
+    return m_abortRequested;
+}
+
+void TransferThread::pauseTransfer()
+{
+    QMutexLocker lock(&m_mutex);
+    m_paused = true;
+}
+
+void TransferThread::resumeTransfer()
+{
+    QMutexLocker lock(&m_mutex);
+    m_paused = false;
+    m_cond.wakeAll();
+}
+
+// 在分块回调处调用：暂停期间阻塞传输线程，断开/退出时自动放行
+void TransferThread::waitIfPaused()
+{
+    QMutexLocker lock(&m_mutex);
+    while (m_paused && !m_quit && !m_disconnectRequested)
+        m_cond.wait(&m_mutex);
 }
 
 void TransferThread::run()
@@ -76,6 +113,7 @@ void TransferThread::run()
             } else {
                 task = m_queue.dequeue();
                 haveTask = true;
+                m_abortRequested = false;   // 新任务开始，清除上一次的中断标记
             }
         }
 
@@ -114,7 +152,7 @@ void TransferThread::run()
 
 void TransferThread::runTask(const TransferTask &t, SftpClient &client)
 {
-    emit taskStarted(t.label);
+    emit taskStarted(t.label, t.upload);
 
     QString err;
     QVector<PlanItem> plan;
@@ -134,6 +172,10 @@ void TransferThread::runTask(const TransferTask &t, SftpClient &client)
     for (const PlanItem &p : plan) {
         if (!p.isDir)
             continue;
+        if (abortRequested()) {
+            emit taskFinished(t.label, false, QStringLiteral("传输已中断"));
+            return;
+        }
         if (t.upload) {
             if (!client.makeDir(p.remote, err)) {
                 emit taskFinished(t.label, false, err);
@@ -150,18 +192,26 @@ void TransferThread::runTask(const TransferTask &t, SftpClient &client)
     // 再逐文件传输
     qint64 done = 0;
     int files = 0;
+    auto chunkCb = [&](qint64 d, qint64) -> bool {
+        waitIfPaused();
+        if (abortRequested())
+            return false;   // 让 SftpClient 中断当前文件的读写
+        emit progress(t.label, done + d, total);
+        return true;
+    };
     for (const PlanItem &p : plan) {
         if (p.isDir)
             continue;
+        waitIfPaused();
+        if (abortRequested()) {
+            emit taskFinished(t.label, false, QStringLiteral("传输已中断"));
+            return;
+        }
         qint64 r = -1;
         if (t.upload) {
-            r = client.uploadFile(p.local, p.remote,
-                                  [&](qint64 d, qint64) { emit progress(t.label, done + d, total); },
-                                  err);
+            r = client.uploadFile(p.local, p.remote, chunkCb, err);
         } else {
-            r = client.downloadFile(p.remote, p.local,
-                                    [&](qint64 d, qint64) { emit progress(t.label, done + d, total); },
-                                    err);
+            r = client.downloadFile(p.remote, p.local, chunkCb, err);
         }
         if (r < 0) {
             emit taskFinished(t.label, false,

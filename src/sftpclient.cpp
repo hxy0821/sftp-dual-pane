@@ -458,7 +458,7 @@ bool SftpClient::renameEntry(const QString &oldPath, const QString &newPath, QSt
 }
 
 qint64 SftpClient::downloadFile(const QString &remotePath, const QString &localPath,
-                                const std::function<void(qint64, qint64)> &progress, QString &err)
+                                const std::function<bool(qint64, qint64)> &progress, QString &err)
 {
     if (!m_sftp) {
         err = QStringLiteral("未连接");
@@ -503,8 +503,12 @@ qint64 SftpClient::downloadFile(const QString &remotePath, const QString &localP
             return -1;
         }
         done += n;
-        if (progress)
-            progress(done, total);
+        if (progress && !progress(done, total)) {
+            err = QStringLiteral("传输已中断");
+            f.close();
+            libssh2_sftp_close(h);
+            return -1;
+        }
     }
     f.close();
     libssh2_sftp_close(h);
@@ -512,7 +516,7 @@ qint64 SftpClient::downloadFile(const QString &remotePath, const QString &localP
 }
 
 qint64 SftpClient::uploadFile(const QString &localPath, const QString &remotePath,
-                              const std::function<void(qint64, qint64)> &progress, QString &err)
+                              const std::function<bool(qint64, qint64)> &progress, QString &err)
 {
     if (!m_sftp) {
         err = QStringLiteral("未连接");
@@ -560,8 +564,12 @@ qint64 SftpClient::uploadFile(const QString &localPath, const QString &remotePat
             p += w;
             left -= w;
             done += w;
-            if (progress)
-                progress(done, total);
+            if (progress && !progress(done, total)) {
+                err = QStringLiteral("传输已中断");
+                f.close();
+                libssh2_sftp_close(h);
+                return -1;
+            }
         }
     }
     f.close();

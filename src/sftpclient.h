@@ -58,10 +58,11 @@ public:
     bool renameEntry(const QString &oldPath, const QString &newPath, QString &err);
     bool statFile(const QString &path, FileEntry &out, QString &err);
 
+    // progress 回调返回 false 表示请求中断传输，函数立即返回 -1 并把 err 置为“传输已中断”
     qint64 downloadFile(const QString &remotePath, const QString &localPath,
-                        const std::function<void(qint64, qint64)> &progress, QString &err);
+                        const std::function<bool(qint64, qint64)> &progress, QString &err);
     qint64 uploadFile(const QString &localPath, const QString &remotePath,
-                      const std::function<void(qint64, qint64)> &progress, QString &err);
+                      const std::function<bool(qint64, qint64)> &progress, QString &err);
 
 signals:
     void hostChanged();
