@@ -10,7 +10,7 @@ ApplicationWindow {
     width: 1280
     height: 800
     // 连接栏完整宽度约 1215px（含边距），最小窗口宽度不能低于它，否则控件被裁剪
-    minimumWidth: 1220
+    minimumWidth: 1360
     minimumHeight: 620
     title: "双栏文件传输 - SFTP"
     color: "#eef1f5"
@@ -22,6 +22,7 @@ ApplicationWindow {
     property color statusMsgColor: "#7b8494"
 
     // ---------- 传输队列（spec §13/§33） ----------
+    property int bottomPage: 0        // 底部面板切换：0=传输队列 1=终端
     ListModel { id: transferListModel }
     property bool transferPaused: false
     property int activeCount: 0      // 队列 + 运行中 + 失败
@@ -211,8 +212,7 @@ ApplicationWindow {
             log("✘ 未连接远程主机，无法打开终端")
             return
         }
-        terminalPanel.visible = true
-        terminalPanel.collapsed = false
+        bottomPage = 1
         if (!shell.running) {
             shell.host = browse.host
             shell.port = browse.port
@@ -225,11 +225,11 @@ ApplicationWindow {
     function closeTerminal() {
         if (shell.running)
             shell.closeSession()
-        terminalPanel.visible = false
+        bottomPage = 0
     }
     function toggleTerminal() {
-        if (terminalPanel.visible && !terminalPanel.collapsed)
-            terminalPanel.collapsed = true   // 折叠不断开会话
+        if (bottomPage === 1)
+            bottomPage = 0   // 切回传输文件页，终端会话保持存活
         else
             openTerminal()
     }
@@ -470,9 +470,136 @@ ApplicationWindow {
     }
 
     // ---------- 主体布局 ----------
+    // 左侧导航（spec §7：模块入口，不引入多页面）
+    Rectangle {
+        id: sideNav
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: 8
+        anchors.topMargin: 8
+        anchors.bottomMargin: 8
+        width: 132
+        radius: 8
+        color: "#ffffff"
+        border.width: 1
+        border.color: "#e3e7ee"
+
+        Column {
+            anchors.fill: parent
+            anchors.margins: 8
+            spacing: 4
+
+            // 传输文件（默认页：底部显示传输队列）
+            Rectangle {
+                id: navFile
+                width: parent.width
+                height: 38
+                radius: 6
+                readonly property bool active: bottomPage === 0
+    onActiveChanged: fileIco.requestPaint()
+                color: navFile.active ? "#e9f0ff" : (navMa1.containsMouse ? "#f2f6fc" : "transparent")
+                Rectangle { width: 3; height: 20; radius: 1.5; color: navFile.active ? "#3a7afe" : "transparent"
+                            anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+                Row {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    spacing: 8
+                    Canvas {
+                        id: fileIco
+                        width: 16; height: 16
+                        anchors.verticalCenter: parent.verticalCenter
+                        onPaint: {
+                            var ctx = getContext("2d")
+                            ctx.reset()
+                            ctx.strokeStyle = navFile.active ? "#3a7afe" : "#5a6472"
+                            ctx.lineWidth = 1.8
+                            ctx.lineCap = "round"
+                            ctx.lineJoin = "round"
+                            ctx.beginPath()
+                            ctx.moveTo(4.5, 12); ctx.lineTo(4.5, 4)
+                            ctx.moveTo(2.2, 6.5); ctx.lineTo(4.5, 4); ctx.lineTo(6.8, 6.5)
+                            ctx.moveTo(11.5, 4); ctx.lineTo(11.5, 12)
+                            ctx.moveTo(9.2, 9.5); ctx.lineTo(11.5, 12); ctx.lineTo(13.8, 9.5)
+                            ctx.stroke()
+                        }
+                        Component.onCompleted: requestPaint()
+                    }
+                    Label { anchors.verticalCenter: parent.verticalCenter
+                            text: "传输文件"; color: navFile.active ? "#1d5fd6" : "#3a414a"
+                            font.bold: navFile.active }
+                    Item { width: 4; height: 1 }
+                    Rectangle {
+                        visible: activeCount > 0
+                        width: Math.max(18, countLbl.implicitWidth + 8)
+                        height: 15
+                        radius: 7.5
+                        anchors.verticalCenter: parent.verticalCenter
+                        color: "#3a7afe"
+                        Label { id: countLbl; anchors.centerIn: parent
+                                text: activeCount; color: "#ffffff"; font.pixelSize: 10 }
+                    }
+                }
+                MouseArea {
+                    id: navMa1
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: bottomPage = 0
+                }
+            }
+
+            // 终端（底部显示终端面板）
+            Rectangle {
+                id: navTerm
+                width: parent.width
+                height: 38
+                radius: 6
+                readonly property bool active: bottomPage === 1
+    onActiveChanged: termIco.requestPaint()
+                color: navTerm.active ? "#e9f0ff" : (navMa2.containsMouse ? "#f2f6fc" : "transparent")
+                Rectangle { width: 3; height: 20; radius: 1.5; color: navTerm.active ? "#3a7afe" : "transparent"
+                            anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
+                Row {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    spacing: 8
+                    Canvas {
+                        id: termIco
+                        width: 16; height: 16
+                        anchors.verticalCenter: parent.verticalCenter
+                        onPaint: {
+                            var ctx = getContext("2d")
+                            ctx.reset()
+                            ctx.strokeStyle = navTerm.active ? "#3a7afe" : "#5a6472"
+                            ctx.lineWidth = 1.8
+                            ctx.lineCap = "round"
+                            ctx.lineJoin = "round"
+                            ctx.moveTo(3, 4); ctx.lineTo(8, 8); ctx.lineTo(3, 12)
+                            ctx.moveTo(10, 12.5); ctx.lineTo(14, 12.5)
+                            ctx.stroke()
+                        }
+                        Component.onCompleted: requestPaint()
+                    }
+                    Label { anchors.verticalCenter: parent.verticalCenter
+                            text: "终端"; color: navTerm.active ? "#1d5fd6" : "#3a414a"
+                            font.bold: navTerm.active }
+                }
+                MouseArea {
+                    id: navMa2
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: toggleTerminal()
+                }
+            }
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 8
+        anchors.topMargin: 8
+        anchors.rightMargin: 8
+        anchors.bottomMargin: 8
+        anchors.leftMargin: 148
         spacing: 8
 
         // 连接栏（卡片）
@@ -493,37 +620,15 @@ ApplicationWindow {
                 UiCombo {
                     id: savedCombo
                     Layout.preferredWidth: 190
-                    displayText: currentIndex < 0 ? "已保存连接" : currentText
+                    displayText: {
+                        if (currentIndex < 0)
+                            return "已保存连接"
+                        var m = settingsStore.connection(savedCombo.model[currentIndex])
+                        return currentText + (m && m.user ? " (" + m.user + ")" : "")
+                    }
                     onActivated: applySaved(index, true)
                     popup.onClosed: savedCombo.focus = false
                 }
-                UiTool { text: "保存"; onClicked: saveDialog.openForSave() }
-                UiTool {
-                    text: "删除"
-                    onClicked: {
-                        if (savedCombo.currentIndex >= 0) {
-                            var name = savedCombo.model[savedCombo.currentIndex]
-                            settingsStore.removeConnection(name)
-                            if (loadedConnection === name)
-                                loadedConnection = ""
-                            refreshSaved()
-                        }
-                    }
-                }
-                UiTool {
-                    text: "新建连接"
-                    onClicked: {
-                        if (browse.connected)
-                            doDisconnect()
-                        hostField.text = ""
-                        portField.text = "22"
-                        userField.text = ""
-                        passField.text = ""
-                        clearLoaded()
-                        hostField.forceActiveFocus()
-                    }
-                }
-
                 ToolSeparator {
                     contentItem: Rectangle {
                         implicitWidth: 1
@@ -581,6 +686,12 @@ ApplicationWindow {
                         remoteModel.showHidden = checked
                     }
                 }
+                Item { Layout.fillWidth: true }
+                UiTool {
+                    id: connManageBtn
+                    text: "管理"
+                    onClicked: connMenu.popup(connManageBtn, 0, connManageBtn.height + 4)
+                }
                 // 吸收窗口多余宽度，防止 RowLayout 把空隙摊进各控件之间
                 Item { Layout.fillWidth: true }
             }
@@ -633,48 +744,42 @@ ApplicationWindow {
             anchors.margins: 8
             spacing: 6
 
-            RowLayout {
-                id: bottomRow
+            TransferPanel {
+                id: transferPanel
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 8
-
-                TransferPanel {
-                    id: transferPanel
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    model: transferListModel
-                    paused: root.transferPaused
-                    activeCount: root.activeCount
-                    doneCount: root.doneCount
-                    onPauseRequested: {
-                        if (transferPaused) {
-                            transferPaused = false
-                            transfer.resumeTransfer()
-                        } else {
-                            transferPaused = true
-                            transfer.pauseTransfer()
-                        }
-                    }
-                    onAbortRequested: {
+                visible: bottomPage === 0
+                model: transferListModel
+                paused: root.transferPaused
+                activeCount: root.activeCount
+                doneCount: root.doneCount
+                onPauseRequested: {
+                    if (transferPaused) {
                         transferPaused = false
-                        transfer.abortTransfer()
+                        transfer.resumeTransfer()
+                    } else {
+                        transferPaused = true
+                        transfer.pauseTransfer()
                     }
-                    onCancelQueuedRequested: transfer.cancelQueued(label)
-                    onRetryRequested: retryTransfer(index)
-                    onDeleteRequested: deleteTransfer(index)
-                    onClearFinished: clearFinishedTasks()
                 }
+                onAbortRequested: {
+                    transferPaused = false
+                    transfer.abortTransfer()
+                }
+                onCancelQueuedRequested: transfer.cancelQueued(label)
+                onRetryRequested: retryTransfer(index)
+                onDeleteRequested: deleteTransfer(index)
+                onClearFinished: clearFinishedTasks()
+                onUploadBackClicked: startUploadBack()
+            }
 
-                TerminalPanel {
-                    id: terminalPanel
-                    Layout.fillHeight: true
-                    Layout.preferredWidth: !visible ? 0
-                                           : collapsed ? 56 : Math.round(bottomRow.width * 0.34)
-                    visible: false
-                    onCloseRequested: closeTerminal()
-                    onCommandRequested: shell.sendInput(line)
-                }
+            TerminalPanel {
+                id: terminalPanel
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                visible: bottomPage === 1
+                onCloseRequested: closeTerminal()
+                onCommandRequested: shell.sendInput(line)
             }
 
             // 状态栏
@@ -714,11 +819,6 @@ ApplicationWindow {
                         Layout.fillWidth: true
                     }
                     Item { Layout.fillWidth: true; visible: statusMsg === "" }
-                    UiButton {
-                        visible: openRegistry.dirtyCount > 0
-                        text: "上传修改(" + openRegistry.dirtyCount + ")"
-                        onClicked: startUploadBack()
-                    }
                     Label {
                         text: activeCount > 0
                               ? activeCount + " 个传输任务 · 上传 " + Utils.formatBytes(upSpeed) + "/s · 下载 " + Utils.formatBytes(downSpeed) + "/s"
@@ -785,6 +885,51 @@ ApplicationWindow {
         }
     }
 
+    // ---------- 连接管理菜单（spec §8：低优先级操作收进二级菜单） ----------
+    Menu {
+        id: connMenu
+        implicitWidth: 170
+        topPadding: 4
+        bottomPadding: 4
+        leftPadding: 4
+        rightPadding: 4
+        background: Rectangle {
+            radius: 8
+            color: "#ffffff"
+            border.width: 1
+            border.color: "#dfe4ec"
+        }
+        MenuItem {
+            text: "保存当前连接"
+            onTriggered: saveDialog.openForSave()
+        }
+        MenuItem {
+            text: "删除当前连接"
+            enabled: savedCombo.currentIndex >= 0
+            onTriggered: {
+                var name = savedCombo.model[savedCombo.currentIndex]
+                settingsStore.removeConnection(name)
+                if (loadedConnection === name)
+                    loadedConnection = ""
+                refreshSaved()
+                log("已删除连接 " + name)
+            }
+        }
+        MenuItem {
+            text: "新建连接"
+            onTriggered: {
+                if (browse.connected)
+                    doDisconnect()
+                hostField.text = ""
+                portField.text = "22"
+                userField.text = ""
+                passField.text = ""
+                clearLoaded()
+                hostField.forceActiveFocus()
+            }
+        }
+    }
+
     // ---------- 保存连接对话框 ----------
     Dialog {
         id: saveDialog
@@ -800,14 +945,46 @@ ApplicationWindow {
             border.width: 1
             border.color: "#e3e7ee"
         }
-        header: Label {
-            text: saveDialog.title
-            font.pixelSize: 14
-            font.bold: true
-            color: "#2b3138"
-            leftPadding: 14
-            topPadding: 12
-            bottomPadding: 4
+        header: Item {
+            implicitHeight: 48
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                anchors.topMargin: 12
+                spacing: 10
+            Rectangle {
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
+                radius: 17
+                color: "#e8f0ff"
+                Canvas {
+                    anchors.centerIn: parent
+                    width: 15; height: 15
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.reset()
+                        ctx.strokeStyle = "#3a7afe"
+                        ctx.lineWidth = 1.8
+                        ctx.lineCap = "round"
+                        ctx.lineJoin = "round"
+                        ctx.beginPath()
+                        ctx.moveTo(2, 8.5); ctx.lineTo(2, 13.5); ctx.lineTo(13, 13.5); ctx.lineTo(13, 8.5)
+                        ctx.moveTo(7.5, 1.5); ctx.lineTo(7.5, 9.5)
+                        ctx.moveTo(4.5, 7); ctx.lineTo(7.5, 10); ctx.lineTo(10.5, 7)
+                        ctx.stroke()
+                    }
+                    Component.onCompleted: requestPaint()
+                }
+            }
+            Label {
+                text: saveDialog.title
+                font.pixelSize: 14
+                font.bold: true
+                color: "#2b3138"
+                Layout.fillWidth: true
+            }
+        }
         }
         footer: RowLayout {
             spacing: 8

@@ -18,6 +18,7 @@ Rectangle {
     signal retryRequested(int index)
     signal deleteRequested(int index)
     signal clearFinished()
+    signal uploadBackClicked()
 
     property int currentTab: 0   // 0=传输队列 1=已完成
 
@@ -89,6 +90,11 @@ Rectangle {
                             onClicked: panel.currentTab = 1 }
             }
             Item { Layout.fillWidth: true }
+            UiButton {
+                visible: openRegistry.dirtyCount > 0
+                text: "上传修改(" + openRegistry.dirtyCount + ")"
+                onClicked: panel.uploadBackClicked()
+            }
             UiTool {
                 visible: panel.currentTab === 1 && panel.doneCount > 0
                 text: "清空记录"

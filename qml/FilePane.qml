@@ -328,6 +328,7 @@ Rectangle {
     Menu {
         id: ctxMenu
         property int row: -1
+        implicitWidth: 180
         topPadding: 4
         bottomPadding: 4
         leftPadding: 4
@@ -360,6 +361,7 @@ Rectangle {
         MenuItem {
             text: "上传本地修改"
             visible: pane.side === "remote"
+            height: visible ? implicitHeight : 0
             enabled: ctxMenu.row >= 0 && !pane.model.isDirAt(ctxMenu.row)
                      && openRegistry.isDirtyRemote(pane.model.pathAt(ctxMenu.row))
             onTriggered: if (ctxMenu.row >= 0) pane.uploadBack(ctxMenu.row)
@@ -383,6 +385,7 @@ Rectangle {
 
     Menu {
         id: emptyMenu
+        implicitWidth: 150
         topPadding: 4
         bottomPadding: 4
         leftPadding: 4
@@ -402,60 +405,113 @@ Rectangle {
     Dialog {
         id: mkdirDialog
         modal: true
-        title: "新建文件夹"
-        padding: 14
+        padding: 16
+        width: 420
         parent: pane
         x: (pane.width - width) / 2
         y: (pane.height - height) / 2
 
         background: Rectangle {
-            radius: 10
+            radius: 12
             color: "#ffffff"
             border.width: 1
             border.color: "#e3e7ee"
         }
-        header: Label {
-            text: mkdirDialog.title
-            font.pixelSize: 14
-            font.bold: true
-            color: "#2b3138"
-            leftPadding: 14
-            topPadding: 12
-            bottomPadding: 4
+
+        header: Item {
+            implicitHeight: 44
+            RowLayout {
+                anchors.fill: parent
+                spacing: 12
+
+                Rectangle {
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 40
+                    radius: 20
+                    color: "#e8f0ff"
+
+                    Canvas {
+                        anchors.centerIn: parent
+                        width: 18; height: 14
+                        onPaint: {
+                            var ctx = getContext("2d")
+                            ctx.reset()
+                            ctx.fillStyle = "#3a7afe"
+                            ctx.beginPath()
+                            ctx.moveTo(1, 3); ctx.lineTo(6.5, 3); ctx.lineTo(8.5, 5.2); ctx.lineTo(1, 5.2)
+                            ctx.closePath(); ctx.fill()
+                            ctx.beginPath()
+                            ctx.moveTo(1, 5.2); ctx.lineTo(17, 5.2)
+                            ctx.quadraticCurveTo(18, 5.2, 18, 6.2); ctx.lineTo(18, 11.5)
+                            ctx.quadraticCurveTo(18, 13.5, 16, 13.5); ctx.lineTo(3, 13.5)
+                            ctx.quadraticCurveTo(1, 13.5, 1, 11.5)
+                            ctx.closePath(); ctx.fill()
+                        }
+                        Component.onCompleted: requestPaint()
+                    }
+                }
+
+                ColumnLayout {
+                    spacing: 2
+                    Label { text: "新建文件夹"; font.pixelSize: 15; font.bold: true; color: "#2b3138" }
+                    Label { text: "在当前目录下创建"; font.pixelSize: 12; color: "#8a93a0" }
+                }
+                Item { Layout.fillWidth: true }
+            }
         }
+
+        ColumnLayout {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            spacing: 14
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                Label { text: "位置"; font.pixelSize: 11; color: "#9aa3b0" }
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 30
+                    radius: 6
+                    color: "#f5f7fa"
+                    Label {
+                        anchors.fill: parent
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
+                        verticalAlignment: Text.AlignVCenter
+                        text: pane.model ? pane.model.currentPath : ""
+                        font.pixelSize: 11
+                        color: "#5a6472"
+                        elide: Text.ElideMiddle
+                    }
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                Label { text: "名称"; font.pixelSize: 11; color: "#9aa3b0" }
+                UiInput {
+                    id: mkdirField
+                    Layout.fillWidth: true
+                    placeholderText: "输入文件夹名称"
+                    onAccepted: mkdirDialog.accept()
+                }
+            }
+        }
+
         footer: RowLayout {
             spacing: 8
             Item { Layout.fillWidth: true }
             UiButton { text: "取消"; onClicked: mkdirDialog.reject() }
-            UiButton { primary: true; text: "创建"; onClicked: mkdirDialog.accept() }
+            UiButton {
+                primary: true
+                text: "创建"
+                enabled: mkdirField.text.trim().length > 0
+                onClicked: mkdirDialog.accept()
+            }
         }
 
-        ColumnLayout {
-            spacing: 10
-            Label {
-                text: "在当前目录下创建新文件夹"
-                font.pixelSize: 13
-                color: "#5a6472"
-                wrapMode: Text.Wrap
-                Layout.preferredWidth: 340
-                Layout.maximumWidth: 340
-            }
-            Label {
-                text: pane.model ? pane.model.currentPath : ""
-                font.pixelSize: 11
-                color: "#9aa3b0"
-                elide: Text.ElideMiddle
-                Layout.preferredWidth: 340
-                Layout.maximumWidth: 340
-            }
-            UiInput {
-                id: mkdirField
-                Layout.preferredWidth: 340
-                Layout.maximumWidth: 340
-                placeholderText: "文件夹名称"
-                onAccepted: mkdirDialog.accept()
-            }
-        }
         onAccepted: if (pane.model) pane.model.makeDir(mkdirField.text)
         function openFor() {
             mkdirField.text = ""
@@ -467,60 +523,115 @@ Rectangle {
     Dialog {
         id: newFileDialog
         modal: true
-        title: "新建文件"
-        padding: 14
+        padding: 16
+        width: 420
         parent: pane
         x: (pane.width - width) / 2
         y: (pane.height - height) / 2
 
         background: Rectangle {
-            radius: 10
+            radius: 12
             color: "#ffffff"
             border.width: 1
             border.color: "#e3e7ee"
         }
-        header: Label {
-            text: newFileDialog.title
-            font.pixelSize: 14
-            font.bold: true
-            color: "#2b3138"
-            leftPadding: 14
-            topPadding: 12
-            bottomPadding: 4
+
+        header: Item {
+            implicitHeight: 44
+            RowLayout {
+                anchors.fill: parent
+                spacing: 12
+
+                Rectangle {
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 40
+                    radius: 20
+                    color: "#e8f0ff"
+
+                    Canvas {
+                        anchors.centerIn: parent
+                        width: 14; height: 16
+                        onPaint: {
+                            var ctx = getContext("2d")
+                            ctx.reset()
+                            ctx.fillStyle = "#5b8def"
+                            ctx.beginPath()
+                            ctx.moveTo(2, 2)
+                            ctx.quadraticCurveTo(2, 1, 3, 1); ctx.lineTo(9, 1); ctx.lineTo(12, 4)
+                            ctx.lineTo(12, 14)
+                            ctx.quadraticCurveTo(12, 15, 11, 15); ctx.lineTo(3, 15)
+                            ctx.quadraticCurveTo(2, 15, 2, 14)
+                            ctx.closePath(); ctx.fill()
+                            ctx.fillStyle = "#c7d8f7"
+                            ctx.beginPath()
+                            ctx.moveTo(9, 1); ctx.lineTo(12, 4); ctx.lineTo(9, 4)
+                            ctx.closePath(); ctx.fill()
+                        }
+                        Component.onCompleted: requestPaint()
+                    }
+                }
+
+                ColumnLayout {
+                    spacing: 2
+                    Label { text: "新建文件"; font.pixelSize: 15; font.bold: true; color: "#2b3138" }
+                    Label { text: "在当前目录下创建空文件"; font.pixelSize: 12; color: "#8a93a0" }
+                }
+                Item { Layout.fillWidth: true }
+            }
         }
+
+        ColumnLayout {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            spacing: 14
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                Label { text: "位置"; font.pixelSize: 11; color: "#9aa3b0" }
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 30
+                    radius: 6
+                    color: "#f5f7fa"
+                    Label {
+                        anchors.fill: parent
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
+                        verticalAlignment: Text.AlignVCenter
+                        text: pane.model ? pane.model.currentPath : ""
+                        font.pixelSize: 11
+                        color: "#5a6472"
+                        elide: Text.ElideMiddle
+                    }
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                Label { text: "名称"; font.pixelSize: 11; color: "#9aa3b0" }
+                UiInput {
+                    id: newFileField
+                    Layout.fillWidth: true
+                    placeholderText: "输入文件名称"
+                    onAccepted: newFileDialog.accept()
+                }
+            }
+        }
+
         footer: RowLayout {
             spacing: 8
             Item { Layout.fillWidth: true }
             UiButton { text: "取消"; onClicked: newFileDialog.reject() }
-            UiButton { primary: true; text: "创建"; onClicked: newFileDialog.accept() }
+            UiButton {
+                primary: true
+                text: "创建"
+                enabled: newFileField.text.trim().length > 0
+                onClicked: newFileDialog.accept()
+            }
         }
 
-        ColumnLayout {
-            spacing: 10
-            Label {
-                text: "在当前目录下创建空文件"
-                font.pixelSize: 13
-                color: "#5a6472"
-                wrapMode: Text.Wrap
-                Layout.preferredWidth: 340
-                Layout.maximumWidth: 340
-            }
-            Label {
-                text: pane.model ? pane.model.currentPath : ""
-                font.pixelSize: 11
-                color: "#9aa3b0"
-                elide: Text.ElideMiddle
-                Layout.preferredWidth: 340
-                Layout.maximumWidth: 340
-            }
-            UiInput {
-                id: newFileField
-                Layout.preferredWidth: 340
-                Layout.maximumWidth: 340
-                placeholderText: "文件名称"
-                onAccepted: newFileDialog.accept()
-            }
-        }
         onAccepted: if (pane.model) pane.model.makeFile(newFileField.text)
         function openFor() {
             newFileField.text = ""
@@ -545,14 +656,45 @@ Rectangle {
             border.width: 1
             border.color: "#e3e7ee"
         }
-        header: Label {
-            text: renameDialog.title
-            font.pixelSize: 14
-            font.bold: true
-            color: "#2b3138"
-            leftPadding: 14
-            topPadding: 12
-            bottomPadding: 4
+        header: Item {
+            implicitHeight: 48
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                anchors.topMargin: 12
+                spacing: 10
+            Rectangle {
+                Layout.preferredWidth: 34
+                Layout.preferredHeight: 34
+                radius: 17
+                color: "#e8f0ff"
+                Canvas {
+                    anchors.centerIn: parent
+                    width: 15; height: 15
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.reset()
+                        ctx.strokeStyle = "#3a7afe"
+                        ctx.lineWidth = 2.2
+                        ctx.lineCap = "round"
+                        ctx.beginPath(); ctx.moveTo(11.5, 3.5); ctx.lineTo(4.5, 10.5); ctx.stroke()
+                        ctx.fillStyle = "#3a7afe"
+                        ctx.beginPath()
+                        ctx.moveTo(2.2, 13.8); ctx.lineTo(3.4, 10.4); ctx.lineTo(5.6, 12.6)
+                        ctx.closePath(); ctx.fill()
+                    }
+                    Component.onCompleted: requestPaint()
+                }
+            }
+            Label {
+                text: renameDialog.title
+                font.pixelSize: 14
+                font.bold: true
+                color: "#2b3138"
+                Layout.fillWidth: true
+            }
+        }
         }
         footer: RowLayout {
             spacing: 8
@@ -583,8 +725,8 @@ Rectangle {
     Dialog {
         id: confirmDelete
         modal: true
-        title: "删除确认"
-        padding: 14
+        padding: 0
+        width: 380
         parent: pane
         x: (pane.width - width) / 2
         y: (pane.height - height) / 2
@@ -592,20 +734,54 @@ Rectangle {
         property string message: ""
 
         background: Rectangle {
-            radius: 10
+            radius: 12
             color: "#ffffff"
             border.width: 1
             border.color: "#e3e7ee"
         }
-        header: Label {
-            text: confirmDelete.title
-            font.pixelSize: 14
-            font.bold: true
-            color: "#2b3138"
-            leftPadding: 14
-            topPadding: 12
-            bottomPadding: 4
+
+        header: Item {
+            implicitHeight: 44
+            RowLayout {
+                anchors.fill: parent
+                spacing: 12
+
+                Rectangle {
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 40
+                    radius: 20
+                    color: "#fdeaea"
+                    Text {
+                        anchors.centerIn: parent
+                        text: "\u00d7"
+                        color: "#d5494e"
+                        font.pixelSize: 22
+                        font.bold: true
+                    }
+                }
+
+                ColumnLayout {
+                    spacing: 2
+                    Label { text: "删除确认"; font.pixelSize: 15; font.bold: true; color: "#2b3138" }
+                    Label { text: "此操作不可撤销"; font.pixelSize: 12; color: "#8a93a0" }
+                }
+                Item { Layout.fillWidth: true }
+            }
         }
+
+        ColumnLayout {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            spacing: 14
+
+            Label {
+                width: 340
+                wrapMode: Text.Wrap
+                color: "#3a414a"
+                text: confirmDelete.message
+            }
+        }
+
         footer: RowLayout {
             spacing: 8
             Item { Layout.fillWidth: true }
@@ -613,12 +789,6 @@ Rectangle {
             UiButton { danger: true; text: "删除"; onClicked: confirmDelete.accept() }
         }
 
-        Label {
-            width: 300
-            wrapMode: Text.Wrap
-            color: "#3a414a"
-            text: confirmDelete.message
-        }
         onAccepted: if (pane.model) pane.model.removeAt(confirmDelete.row)
         function openFor(row) {
             confirmDelete.row = row

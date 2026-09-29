@@ -6,7 +6,6 @@ import QtQuick.Layouts 1.11
 Rectangle {
     id: panel
 
-    property bool collapsed: false                    // 折叠后只留窄条入口
     property bool sessionRunning: false               // 由上层（ShellSession）同步
     property string statusText: "未连接"
     property color statusColor: "#8a93a0"
@@ -121,7 +120,6 @@ Rectangle {
             }
             Item { Layout.fillWidth: true }
             UiTool { dark: true; text: "清空"; onClicked: { termOut.remove(0, termOut.length); termInputStart = 0 } }
-            UiTool { dark: true; text: "折叠"; onClicked: panel.collapsed = true }
             UiTool { dark: true; text: "关闭"; onClicked: panel.closeRequested() }
         }
 
@@ -183,25 +181,6 @@ Rectangle {
                 }
                 // 其它可打印字符：不拦截，由 TextArea 原生插入（本地回显）
             }
-        }
-    }
-
-    // 折叠窄条（会话保持存活）
-    Item {
-        anchors.fill: parent
-        visible: panel.collapsed
-
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: panel.collapsed = false
-        }
-        Text {
-            anchors.centerIn: parent
-            text: "终端 ▸"
-            color: "#c9d3df"
-            font.pixelSize: 13
-            rotation: -90
         }
     }
 }
