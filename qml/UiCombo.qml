@@ -60,7 +60,12 @@ ComboBox {
 
         contentItem: Text {
             leftPadding: 8
-            text: item.text
+            rightPadding: 8
+            // ItemDelegate.text 不会被 ComboBox 自动填充，这里按 textRole/modelData 取值
+            text: control.textRole
+                  ? (Array.isArray(control.model) ? modelData[control.textRole]
+                                                 : model[control.textRole])
+                  : modelData
             font.pixelSize: 13
             color: control.highlightedIndex === index ? "#1d5fd6" : "#2b3138"
             verticalAlignment: Text.AlignVCenter

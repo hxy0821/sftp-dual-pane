@@ -849,6 +849,7 @@ Rectangle {
                 Label { text: "操作"; font.pixelSize: 11; color: "#9aa3b0" }
                 Label {
                     Layout.fillWidth: true
+                    Layout.preferredWidth: 388   // 固定内容宽度，避免 wrap 文本与 Dialog contentHeight 互相触发绑定环
                     wrapMode: Text.Wrap
                     font.pixelSize: 13
                     color: "#3a414a"

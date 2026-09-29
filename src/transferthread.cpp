@@ -22,17 +22,22 @@ TransferThread::~TransferThread()
 
 void TransferThread::enqueueUpload(const QStringList &localPaths, const QString &remoteDir)
 {
-    QVector<QPair<QString, QString>> queued;   // (label, srcPath)
+    QVector<TransferTask> added;
     {
         QMutexLocker lock(&m_mutex);
         for (const QString &p : localPaths) {
-            const QString label = QStringLiteral("上传 %1").arg(QFileInfo(p).fileName());
-            m_queue.enqueue({ true, p, remoteDir, label, false });
-            queued.append({ label, p });
+            TransferTask t;
+            t.id = m_nextTaskId++;
+            t.upload = true;
+            t.srcPath = p;
+            t.dstDir = remoteDir;
+            t.label = QStringLiteral("上传 %1").arg(QFileInfo(p).fileName());
+            added.append(t);
+            m_queue.enqueue(t);
         }
     }
-    for (const auto &q : queued)
-        emit taskQueued(q.first, true, q.second, remoteDir);
+    for (const TransferTask &t : added)
+        emit taskQueued(t.id, t.label, t.upload, t.srcPath, t.dstDir);
     m_cond.wakeOne();
     if (!isRunning())
         start();
@@ -41,18 +46,24 @@ void TransferThread::enqueueUpload(const QStringList &localPaths, const QString 
 void TransferThread::enqueueDownload(const QStringList &remotePaths, const QString &localDir,
                                      bool openAfter)
 {
-    QVector<QPair<QString, QString>> queued;   // (label, srcPath)
+    QVector<TransferTask> added;
     {
         QMutexLocker lock(&m_mutex);
         const QString verb = openAfter ? QStringLiteral("打开") : QStringLiteral("下载");
         for (const QString &p : remotePaths) {
-            const QString label = QStringLiteral("%1 %2").arg(verb, QFileInfo(p).fileName());
-            m_queue.enqueue({ false, p, localDir, label, openAfter });
-            queued.append({ label, p });
+            TransferTask t;
+            t.id = m_nextTaskId++;
+            t.upload = false;
+            t.srcPath = p;
+            t.dstDir = localDir;
+            t.label = QStringLiteral("%1 %2").arg(verb, QFileInfo(p).fileName());
+            t.openAfter = openAfter;
+            added.append(t);
+            m_queue.enqueue(t);
         }
     }
-    for (const auto &q : queued)
-        emit taskQueued(q.first, false, q.second, localDir);
+    for (const TransferTask &t : added)
+        emit taskQueued(t.id, t.label, t.upload, t.srcPath, t.dstDir);
     m_cond.wakeOne();
     if (!isRunning())
         start();
@@ -63,7 +74,7 @@ void TransferThread::disconnectRemote()
     {
         QMutexLocker lock(&m_mutex);
         m_disconnectRequested = true;
-        m_abortRequested = true;   // 断开连接时同时中断在途传输
+        m_abortTaskId = m_runningTaskId;   // 断开连接时同时中断在途传输
         if (!m_queue.isEmpty()) {
             m_queue.clear();
             emit queueCleared();   // 通知 UI 移除“等待中”任务
@@ -72,11 +83,32 @@ void TransferThread::disconnectRemote()
     m_cond.wakeAll();
 }
 
-void TransferThread::abortTransfer()
+// 取消单个任务：按 id 精确匹配，运行中的置中断标记，等待中的直接从队列移除
+void TransferThread::abortTask(int id)
 {
     QMutexLocker lock(&m_mutex);
-    m_abortRequested = true;
-    m_paused = false;          // 暂停中也允许中断
+    if (id == m_runningTaskId) {
+        m_abortTaskId = id;
+        m_paused = false;      // 暂停中也允许中断
+        m_cond.wakeAll();
+        return;
+    }
+    for (int i = m_queue.size() - 1; i >= 0; --i) {
+        if (m_queue.at(i).id == id) {
+            const QString label = m_queue.at(i).label;
+            m_queue.removeAt(i);
+            emit taskCancelled(id, label);
+            return;
+        }
+    }
+}
+
+// 全局中断：中断当前任务并清空等待队列
+void TransferThread::abortAll()
+{
+    QMutexLocker lock(&m_mutex);
+    m_abortTaskId = m_runningTaskId;
+    m_paused = false;
     if (!m_queue.isEmpty()) {
         m_queue.clear();
         emit queueCleared();
@@ -84,21 +116,10 @@ void TransferThread::abortTransfer()
     m_cond.wakeAll();
 }
 
-void TransferThread::cancelQueued(const QString &label)
+bool TransferThread::abortRequested(int id)
 {
     QMutexLocker lock(&m_mutex);
-    for (int i = m_queue.size() - 1; i >= 0; --i) {
-        if (m_queue.at(i).label == label) {
-            m_queue.removeAt(i);
-            emit taskCancelled(label);
-        }
-    }
-}
-
-bool TransferThread::abortRequested()
-{
-    QMutexLocker lock(&m_mutex);
-    return m_abortRequested;
+    return m_abortTaskId == id;
 }
 
 void TransferThread::pauseTransfer()
@@ -142,7 +163,9 @@ void TransferThread::run()
             } else {
                 task = m_queue.dequeue();
                 haveTask = true;
-                m_abortRequested = false;   // 新任务开始，清除上一次的中断标记
+                // 按 id 记录当前任务并清中断标记；旧任务的取消标记不会误伤新任务
+                m_runningTaskId = task.id;
+                m_abortTaskId = 0;
             }
         }
 
@@ -169,7 +192,7 @@ void TransferThread::run()
             client.setPassword(password);
             QString err;
             if (!client.connectInternal(15000, err)) {
-                emit taskFinished(task.label, false, QStringLiteral("连接失败: ") + err);
+                emit taskFinished(task.id, task.label, false, QStringLiteral("连接失败: ") + err);
                 continue;
             }
         }
@@ -181,7 +204,7 @@ void TransferThread::run()
 
 void TransferThread::runTask(const TransferTask &t, SftpClient &client)
 {
-    emit taskStarted(t.label, t.upload);
+    emit taskStarted(t.id, t.label, t.upload);
 
     QString err;
     QVector<PlanItem> plan;
@@ -197,7 +220,7 @@ void TransferThread::runTask(const TransferTask &t, SftpClient &client)
         collectRemotePlan(client, t.srcPath, t.dstDir, plan, total, err);
 
     if (!err.isEmpty()) {
-        emit taskFinished(t.label, false, QStringLiteral("扫描失败: ") + err);
+        emit taskFinished(t.id, t.label, false, QStringLiteral("扫描失败: ") + err);
         return;
     }
 
@@ -205,18 +228,18 @@ void TransferThread::runTask(const TransferTask &t, SftpClient &client)
     for (const PlanItem &p : plan) {
         if (!p.isDir)
             continue;
-        if (abortRequested()) {
-            emit taskFinished(t.label, false, QStringLiteral("传输已中断"));
+        if (abortRequested(t.id)) {
+            emit taskFinished(t.id, t.label, false, QStringLiteral("传输已中断"));
             return;
         }
         if (t.upload) {
             if (!client.makeDir(p.remote, err)) {
-                emit taskFinished(t.label, false, err);
+                emit taskFinished(t.id, t.label, false, err);
                 return;
             }
         } else {
             if (!QDir().mkpath(p.local)) {
-                emit taskFinished(t.label, false, QStringLiteral("无法创建本地目录 ") + p.local);
+                emit taskFinished(t.id, t.label, false, QStringLiteral("无法创建本地目录 ") + p.local);
                 return;
             }
         }
@@ -227,17 +250,17 @@ void TransferThread::runTask(const TransferTask &t, SftpClient &client)
     int files = 0;
     auto chunkCb = [&](qint64 d, qint64) -> bool {
         waitIfPaused();
-        if (abortRequested())
+        if (abortRequested(t.id))
             return false;   // 让 SftpClient 中断当前文件的读写
-        emit progress(t.label, done + d, total);
+        emit progress(t.id, t.label, done + d, total);
         return true;
     };
     for (const PlanItem &p : plan) {
         if (p.isDir)
             continue;
         waitIfPaused();
-        if (abortRequested()) {
-            emit taskFinished(t.label, false, QStringLiteral("传输已中断"));
+        if (abortRequested(t.id)) {
+            emit taskFinished(t.id, t.label, false, QStringLiteral("传输已中断"));
             return;
         }
         qint64 r = -1;
@@ -247,7 +270,7 @@ void TransferThread::runTask(const TransferTask &t, SftpClient &client)
             r = client.downloadFile(p.remote, p.local, chunkCb, err);
         }
         if (r < 0) {
-            emit taskFinished(t.label, false,
+            emit taskFinished(t.id, t.label, false,
                               QStringLiteral("传输失败 %1: %2")
                                   .arg(t.upload ? p.local : p.remote, err));
             return;
@@ -256,7 +279,7 @@ void TransferThread::runTask(const TransferTask &t, SftpClient &client)
         ++files;
     }
 
-    emit taskFinished(t.label, true, QStringLiteral("%1 个文件，共 %2 字节").arg(files).arg(done));
+    emit taskFinished(t.id, t.label, true, QStringLiteral("%1 个文件，共 %2 字节").arg(files).arg(done));
     emit taskDone(t.upload, true);
 
     // “打开”任务：下载完成后通知 QML 调本地应用

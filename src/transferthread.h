@@ -11,6 +11,7 @@
 class SftpClient;
 
 struct TransferTask {
+    int id = 0;           // 任务唯一身份：取消/进度/完成均按 id 匹配
     bool upload = true;   // true: 本地 -> 远程；false: 远程 -> 本地
     QString srcPath;      // 源路径（单个文件或目录）
     QString dstDir;       // 目标目录
@@ -47,16 +48,16 @@ public:
     Q_INVOKABLE void disconnectRemote();
     Q_INVOKABLE void pauseTransfer();
     Q_INVOKABLE void resumeTransfer();
-    Q_INVOKABLE void abortTransfer();
-    Q_INVOKABLE void cancelQueued(const QString &label);   // 仅移除队列中等待的同名任务
+    Q_INVOKABLE void abortTask(int id);   // 取消单个任务：运行中的中断，等待中的移出队列
+    Q_INVOKABLE void abortAll();          // 全局中断：中断当前任务并清空等待队列
 
 signals:
-    void taskQueued(const QString &label, bool upload, const QString &srcPath, const QString &dstDir);
+    void taskQueued(int taskId, const QString &label, bool upload, const QString &srcPath, const QString &dstDir);
     void queueCleared();
-    void taskCancelled(const QString &label);
-    void taskStarted(const QString &label, bool upload);
-    void progress(const QString &label, qint64 done, qint64 total);
-    void taskFinished(const QString &label, bool ok, const QString &message);
+    void taskCancelled(int taskId, const QString &label);
+    void taskStarted(int taskId, const QString &label, bool upload);
+    void progress(int taskId, const QString &label, qint64 done, qint64 total);
+    void taskFinished(int taskId, const QString &label, bool ok, const QString &message);
     void taskDone(bool upload, bool ok);
     void allFinished();
     void openReady(const QString &localPath, const QString &remotePath, qint64 remoteSize,
@@ -79,15 +80,17 @@ private:
     void collectRemotePlan(SftpClient &client, const QString &remotePath, const QString &localDir,
                            QVector<PlanItem> &plan, qint64 &total, QString &err);
     void waitIfPaused();
-    bool abortRequested();
+    bool abortRequested(int id);
 
     QMutex m_mutex;
     QWaitCondition m_cond;
     QQueue<TransferTask> m_queue;
+    int m_nextTaskId = 1;       // 任务 id 分配器（单调递增，永不复用）
+    int m_runningTaskId = 0;    // 当前运行任务 id；0 表示无
+    int m_abortTaskId = 0;      // 需要中断的任务 id；0 表示无
     bool m_quit = false;
     bool m_disconnectRequested = false;
     bool m_paused = false;
-    bool m_abortRequested = false;
 
     QString m_host;
     quint16 m_port = 22;

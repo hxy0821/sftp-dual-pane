@@ -3,17 +3,18 @@ import QtQuick.Controls 2.4
 import "utils.js" as Utils
 
 // 传输队列单行（spec §32：只展示任务状态，不含 SFTP 逻辑）
-// 模型角色：label/name/upload/srcPath/dstDir/size/done/speed/eta/status/lastTs
+// 模型角色：taskId/label/name/upload/srcPath/dstDir/size/done/speed/eta/status/lastTs
 // 列位置由上层传入的 cols 数组决定（与表头共用同一套坐标，保证逐列对齐）
 Item {
     id: row
 
     property bool paused: false            // 全局暂停态（由上层传入，仅影响 running 行显示）
+    property int taskId: 0                 // 任务唯一 id（取消按 id 精确匹配）
     property var cols: [10, 88, 900, 972, 1148, 1228, 1294, 1362]   // 默认列坐标（会被上层覆盖）
 
     signal pauseClicked()
-    signal abortClicked()
-    signal cancelQueuedClicked()
+    signal abortClicked(int taskId)
+    signal cancelQueuedClicked(int taskId)
     signal retryClicked()
     signal deleteClicked()
 
@@ -200,12 +201,12 @@ Item {
                 UiTool {
                     visible: status === "running"
                     text: "取消"
-                    onClicked: row.abortClicked()
+                    onClicked: row.abortClicked(row.taskId)
                 }
                 UiTool {
                     visible: status === "queued"
                     text: "取消"
-                    onClicked: row.cancelQueuedClicked()
+                    onClicked: row.cancelQueuedClicked(row.taskId)
                 }
                 UiTool {
                     visible: status === "failed"

@@ -30,10 +30,10 @@ ApplicationWindow {
     property real upSpeed: 0
     property real downSpeed: 0
 
-    function findTaskRow(label, statusList) {
+    function findTaskById(taskId, statusList) {
         for (var i = 0; i < transferListModel.count; i++) {
             var it = transferListModel.get(i)
-            if (it.label === label && statusList.indexOf(it.status) >= 0)
+            if (it.taskId === taskId && statusList.indexOf(it.status) >= 0)
                 return i
         }
         return -1
@@ -138,13 +138,14 @@ ApplicationWindow {
         var it = transferListModel.get(index)
         if (!it || it.status !== "failed")
             return
-        transferListModel.remove(index)
-        if (activeCount > 0)
-            activeCount--
+        // 先确认可重试再移除失败行，避免未连接时任务被丢掉
         if (!browse.connected) {
             log("✘ 未连接远程主机，无法重试")
             return
         }
+        transferListModel.remove(index)
+        if (activeCount > 0)
+            activeCount--
         transfer.host = browse.host
         transfer.port = browse.port
         transfer.user = browse.user
@@ -162,6 +163,16 @@ ApplicationWindow {
         transferListModel.remove(index)
         if (activeCount > 0)
             activeCount--
+    }
+
+    // 取消单个任务：按 id 精确定位，只影响这一行（运行中中断，等待中移出队列）
+    function cancelTask(taskId) {
+        var i = findTaskById(taskId, ["running", "queued"])
+        if (i < 0)
+            return
+        if (transferListModel.get(i).status === "running")
+            transferPaused = false   // 中断运行中的任务时，线程会同步解除暂停
+        transfer.abortTask(taskId)
     }
 
     function clearFinishedTasks() {
@@ -284,6 +295,7 @@ ApplicationWindow {
         id: transfer
         onTaskQueued: {
             transferListModel.append({
+                taskId: taskId,
                 label: label,
                 name: label.replace(/^(上传|下载|打开)\s*/, ""),
                 upload: upload,
@@ -292,6 +304,9 @@ ApplicationWindow {
                 size: 0, done: 0, speed: 0, eta: -1, lastTs: 0,
                 status: "queued"
             })
+            // 记录本次“编辑回传”任务 id，完成信号按 id 匹配，避免同名文件误判
+            if (uploadBackActive && pendingBack && srcPath === pendingBack.localPath)
+                uploadBackTaskId = taskId
             activeCount++
         }
         onQueueCleared: {
@@ -307,7 +322,7 @@ ApplicationWindow {
             activeCount = n
         }
         onTaskCancelled: {
-            var i = findTaskRow(label, ["queued"])
+            var i = findTaskById(taskId, ["queued"])
             if (i >= 0) {
                 transferListModel.remove(i)
                 if (activeCount > 0)
@@ -320,11 +335,12 @@ ApplicationWindow {
                 transferPaused = false
                 transfer.resumeTransfer()
             }
-            var i = findTaskRow(label, ["queued"])
+            var i = findTaskById(taskId, ["queued"])
             if (i >= 0) {
                 transferListModel.setProperty(i, "status", "running")
             } else {
                 transferListModel.append({
+                    taskId: taskId,
                     label: label,
                     name: label.replace(/^(上传|下载|打开)\s*/, ""),
                     upload: upload,
@@ -337,7 +353,7 @@ ApplicationWindow {
             log(label)
         }
         onProgress: {
-            var i = findTaskRow(label, ["running"])
+            var i = findTaskById(taskId, ["running"])
             if (i < 0)
                 return
             var it = transferListModel.get(i)
@@ -360,7 +376,7 @@ ApplicationWindow {
             transferListModel.setProperty(i, "speed", sp)
         }
         onTaskFinished: {
-            var i = findTaskRow(label, ["running", "queued"])
+            var i = findTaskById(taskId, ["running", "queued"])
             if (i >= 0) {
                 var cancelled = message.indexOf("已中断") >= 0
                 transferListModel.setProperty(i, "status",
@@ -375,17 +391,19 @@ ApplicationWindow {
                     activeCount--
                 doneCount++
                 // 回传任务成功：更新登记基线，继续处理其余待回传文件
-                if (uploadBackActive && pendingBack
-                        && label === "上传 " + pendingBack.name) {
+                if (uploadBackActive && pendingBack && taskId === uploadBackTaskId) {
                     uploadBackActive = false
+                    uploadBackTaskId = 0
                     openRegistry.markSynced(pendingBack.remotePath)
                     pendingBack = null
                     if (openRegistry.dirtyCount > 0)
                         startUploadBack()
                 }
             } else {
-                if (uploadBackActive) {
+                // 仅当失败的是回传任务本身时才结束回传流程，其他任务失败不影响
+                if (uploadBackActive && taskId === uploadBackTaskId) {
                     uploadBackActive = false
+                    uploadBackTaskId = 0
                     pendingBack = null
                 }
             }
@@ -416,6 +434,7 @@ ApplicationWindow {
     // ---------- 编辑回传 ----------
     property var pendingBack: null   // 当前正在走回传流程的登记项
     property bool uploadBackActive: false
+    property int uploadBackTaskId: 0 // 本次回传任务的 id（完成信号按 id 匹配）
 
     function startUploadBack() {
         if (!browse.connected) {
@@ -686,14 +705,13 @@ ApplicationWindow {
                         remoteModel.showHidden = checked
                     }
                 }
+                // 吸收窗口多余宽度，把「管理」顶到最右，避免空隙摊进各控件之间
                 Item { Layout.fillWidth: true }
                 UiTool {
                     id: connManageBtn
                     text: "管理"
                     onClicked: connMenu.popup(connManageBtn, 0, connManageBtn.height + 4)
                 }
-                // 吸收窗口多余宽度，防止 RowLayout 把空隙摊进各控件之间
-                Item { Layout.fillWidth: true }
             }
         }
 
@@ -762,11 +780,7 @@ ApplicationWindow {
                         transfer.pauseTransfer()
                     }
                 }
-                onAbortRequested: {
-                    transferPaused = false
-                    transfer.abortTransfer()
-                }
-                onCancelQueuedRequested: transfer.cancelQueued(label)
+                onCancelRequested: cancelTask(taskId)
                 onRetryRequested: retryTransfer(index)
                 onDeleteRequested: deleteTransfer(index)
                 onClearFinished: clearFinishedTasks()
@@ -831,12 +845,13 @@ ApplicationWindow {
         }
     }
 
-    // ---------- 回传冲突确认 ----------    // ---------- 回传冲突确认 ----------
+    // ---------- 回传冲突确认 ----------
     Dialog {
         id: backConflictDialog
         modal: true
         title: "远程文件已变更"
-        padding: 14
+        padding: 16
+        width: 420
         x: (root.width - width) / 2
         y: (root.height - height) / 2
         property var entry: null
@@ -849,39 +864,71 @@ ApplicationWindow {
         }
 
         background: Rectangle {
-            radius: 10
+            radius: 12
             color: "#ffffff"
             border.width: 1
             border.color: "#e3e7ee"
         }
-        header: Label {
-            text: backConflictDialog.title
-            font.pixelSize: 14
-            font.bold: true
-            color: "#2b3138"
-            leftPadding: 14
-            topPadding: 12
-            bottomPadding: 4
+
+        header: Item {
+            implicitHeight: 56
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                anchors.topMargin: 16
+                spacing: 12
+
+                ColumnLayout {
+                    spacing: 2
+                    Label { text: "远程文件已变更"; font.pixelSize: 15; font.bold: true; color: "#2b3138" }
+                    Label { text: "本地副本与打开时不一致，请确认是否覆盖"; font.pixelSize: 12; color: "#8a93a0" }
+                }
+                Item { Layout.fillWidth: true }
+            }
         }
-        footer: RowLayout {
-            spacing: 8
-            Item { Layout.fillWidth: true }
-            UiButton { text: "取消"; onClicked: backConflictDialog.close() }
-            UiButton { primary: true; text: "仍要覆盖"; onClicked: {
-                if (backConflictDialog.entry)
-                    doUploadBack(backConflictDialog.entry)
-                backConflictDialog.close()
-            } }
+
+        ColumnLayout {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            spacing: 14
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                Label { text: "说明"; font.pixelSize: 11; color: "#9aa3b0" }
+                Label {
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: 388   // 固定内容宽度，避免 wrap 文本与 Dialog contentHeight 互相触发绑定环
+                    wrapMode: Text.Wrap
+                    font.pixelSize: 13
+                    color: "#3a414a"
+                    text: "远程文件「" + (backConflictDialog.entry ? backConflictDialog.entry.name : "") +
+                          "」在打开后被其它途径修改过（当前 " +
+                          Utils.formatBytes(backConflictDialog.remoteSize) + "，打开时 " +
+                          Utils.formatBytes(backConflictDialog.entry ? backConflictDialog.entry.baselineSize : 0) +
+                          "）。仍要用本地副本覆盖远程文件吗？"
+                }
+            }
         }
-        Label {
-            width: 340
-            wrapMode: Text.Wrap
-            color: "#3a414a"
-            text: "远程文件「" + (backConflictDialog.entry ? backConflictDialog.entry.name : "") +
-                  "」在打开后被其它途径修改过（当前 " +
-                  Utils.formatBytes(backConflictDialog.remoteSize) + "，打开时 " +
-                  Utils.formatBytes(backConflictDialog.entry ? backConflictDialog.entry.baselineSize : 0) +
-                  "）。仍要用本地副本覆盖远程文件吗？"
+
+        footer: Item {
+            implicitHeight: 46
+            RowLayout {
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                spacing: 8
+                Item { Layout.fillWidth: true }
+                UiButton { text: "取消"; onClicked: backConflictDialog.close() }
+                UiButton { primary: true; text: "仍要覆盖"; onClicked: {
+                    if (backConflictDialog.entry)
+                        doUploadBack(backConflictDialog.entry)
+                    backConflictDialog.close()
+                } }
+            }
         }
     }
 
@@ -935,76 +982,96 @@ ApplicationWindow {
         id: saveDialog
         modal: true
         title: "保存连接"
-        padding: 14
+        padding: 16
+        width: 420
         x: (root.width - width) / 2
         y: (root.height - height) / 2
 
         background: Rectangle {
-            radius: 10
+            radius: 12
             color: "#ffffff"
             border.width: 1
             border.color: "#e3e7ee"
         }
+
         header: Item {
-            implicitHeight: 48
+            implicitHeight: 56
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 14
-                anchors.rightMargin: 14
-                anchors.topMargin: 12
-                spacing: 10
-            Rectangle {
-                Layout.preferredWidth: 34
-                Layout.preferredHeight: 34
-                radius: 17
-                color: "#e8f0ff"
-                Canvas {
-                    anchors.centerIn: parent
-                    width: 15; height: 15
-                    onPaint: {
-                        var ctx = getContext("2d")
-                        ctx.reset()
-                        ctx.strokeStyle = "#3a7afe"
-                        ctx.lineWidth = 1.8
-                        ctx.lineCap = "round"
-                        ctx.lineJoin = "round"
-                        ctx.beginPath()
-                        ctx.moveTo(2, 8.5); ctx.lineTo(2, 13.5); ctx.lineTo(13, 13.5); ctx.lineTo(13, 8.5)
-                        ctx.moveTo(7.5, 1.5); ctx.lineTo(7.5, 9.5)
-                        ctx.moveTo(4.5, 7); ctx.lineTo(7.5, 10); ctx.lineTo(10.5, 7)
-                        ctx.stroke()
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                anchors.topMargin: 16
+                spacing: 12
+
+                Rectangle {
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 40
+                    radius: 20
+                    color: "#e8f0ff"
+                    Canvas {
+                        anchors.centerIn: parent
+                        width: 15; height: 15
+                        onPaint: {
+                            var ctx = getContext("2d")
+                            ctx.reset()
+                            ctx.strokeStyle = "#3a7afe"
+                            ctx.lineWidth = 1.8
+                            ctx.lineCap = "round"
+                            ctx.lineJoin = "round"
+                            ctx.beginPath()
+                            ctx.moveTo(2, 8.5); ctx.lineTo(2, 13.5); ctx.lineTo(13, 13.5); ctx.lineTo(13, 8.5)
+                            ctx.moveTo(7.5, 1.5); ctx.lineTo(7.5, 9.5)
+                            ctx.moveTo(4.5, 7); ctx.lineTo(7.5, 10); ctx.lineTo(10.5, 7)
+                            ctx.stroke()
+                        }
+                        Component.onCompleted: requestPaint()
                     }
-                    Component.onCompleted: requestPaint()
                 }
+
+                ColumnLayout {
+                    spacing: 2
+                    Label { text: "保存连接"; font.pixelSize: 15; font.bold: true; color: "#2b3138" }
+                    Label { text: "保存后可在左侧下拉框快速切换"; font.pixelSize: 12; color: "#8a93a0" }
+                }
+                Item { Layout.fillWidth: true }
             }
-            Label {
-                text: saveDialog.title
-                font.pixelSize: 14
-                font.bold: true
-                color: "#2b3138"
-                Layout.fillWidth: true
-            }
-        }
-        }
-        footer: RowLayout {
-            spacing: 8
-            Item { Layout.fillWidth: true }
-            UiButton { text: "取消"; onClicked: saveDialog.reject() }
-            UiButton { primary: true; text: "保存"; onClicked: saveDialog.accept() }
         }
 
         ColumnLayout {
-            spacing: 8
-            UiInput {
-                id: saveNameField
-                Layout.preferredWidth: 260
-                placeholderText: "连接名称（如：测试机）"
-                onAccepted: saveDialog.accept()
+            anchors.left: parent.left
+            anchors.right: parent.right
+            spacing: 14
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                Label { text: "名称"; font.pixelSize: 11; color: "#9aa3b0" }
+                UiInput {
+                    id: saveNameField
+                    Layout.fillWidth: true
+                    placeholderText: "连接名称（如：测试机）"
+                    onAccepted: saveDialog.accept()
+                }
             }
             UiCheck {
                 id: savePassBox
                 text: "记住密码（明文存于本机配置，仅自用）"
                 checked: true
+            }
+        }
+
+        footer: Item {
+            implicitHeight: 46
+            RowLayout {
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                spacing: 8
+                Item { Layout.fillWidth: true }
+                UiButton { text: "取消"; onClicked: saveDialog.reject() }
+                UiButton { primary: true; text: "保存"; onClicked: saveDialog.accept() }
             }
         }
         onAccepted: {

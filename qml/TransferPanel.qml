@@ -13,8 +13,7 @@ Rectangle {
     property int doneCount: 0
 
     signal pauseRequested()
-    signal abortRequested()
-    signal cancelQueuedRequested(string label)
+    signal cancelRequested(int taskId)
     signal retryRequested(int index)
     signal deleteRequested(int index)
     signal clearFinished()
@@ -140,11 +139,12 @@ Rectangle {
                 width: listView.width
                 height: visible ? 48 : 0
                 visible: panel.currentTab === 0 ? status !== "done" : status === "done"
+                taskId: model.taskId
                 paused: panel.paused
                 cols: panel.colPos
                 onPauseClicked: panel.pauseRequested()
-                onAbortClicked: panel.abortRequested()
-                onCancelQueuedClicked: panel.cancelQueuedRequested(label)
+                onAbortClicked: panel.cancelRequested(taskId)
+                onCancelQueuedClicked: panel.cancelRequested(taskId)
                 onRetryClicked: panel.retryRequested(index)
                 onDeleteClicked: panel.deleteRequested(index)
             }
