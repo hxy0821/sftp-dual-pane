@@ -17,6 +17,7 @@ Rectangle {
 
     signal dropToPeer(var paths)
     signal openFile(int index)   // 双击/菜单打开文件（本地直接打开，远程先下载到缓存）
+    signal uploadBack(int index) // 右键“上传本地修改”（仅远程面板、有未回传修改时可见）
 
     z: pane.dragActive ? 50 : 0
     color: "#ffffff"
@@ -355,6 +356,13 @@ Rectangle {
                 else
                     pane.openFile(ctxMenu.row)
             }
+        }
+        MenuItem {
+            text: "上传本地修改"
+            visible: pane.side === "remote"
+            enabled: ctxMenu.row >= 0 && !pane.model.isDirAt(ctxMenu.row)
+                     && openRegistry.isDirtyRemote(pane.model.pathAt(ctxMenu.row))
+            onTriggered: if (ctxMenu.row >= 0) pane.uploadBack(ctxMenu.row)
         }
         MenuSeparator { }
         MenuItem {

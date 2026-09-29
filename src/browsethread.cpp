@@ -68,6 +68,11 @@ void BrowseThread::makeDir(const QString &path)
     enqueue({ OpMkdir, path, {} });
 }
 
+void BrowseThread::statFile(const QString &path)
+{
+    enqueue({ OpStat, path, {} });
+}
+
 void BrowseThread::makeFile(const QString &path)
 {
     enqueue({ OpMkfile, path, {} });
@@ -141,6 +146,14 @@ void BrowseThread::run()
         case OpRename: {
             const bool ok = client.renameEntry(c.a, c.b, err);
             emit opFinished(QStringLiteral("rename"), ok, err);
+            break;
+        }
+        case OpStat: {
+            FileEntry e;
+            if (client.isConnected() && client.statFile(c.a, e, err))
+                emit statResult(c.a, e.size, QString());
+            else
+                emit statResult(c.a, -1, err.isEmpty() ? QStringLiteral("未连接") : err);
             break;
         }
         case OpDisconnect: {

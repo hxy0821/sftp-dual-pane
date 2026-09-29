@@ -31,13 +31,15 @@ ApplicationWindow {
         return (p && p.length) ? p : "/"
     }
 
-    // 底部单行状态消息：✘ 开头显示红色，✔ 开头显示绿色
+    // 底部单行状态消息：✘ 开头显示红色，✔ 开头显示绿色，⚠ 开头显示橙色
     function log(msg) {
         statusMsg = msg
         if (msg.indexOf("✘") === 0)
             statusMsgColor = "#d5494e"
         else if (msg.indexOf("✔") === 0)
             statusMsgColor = "#2fa356"
+        else if (msg.indexOf("⚠") === 0)
+            statusMsgColor = "#d99a2b"
         else
             statusMsgColor = "#7b8494"
     }
@@ -264,6 +266,21 @@ ApplicationWindow {
                 log("远程连接已断开")
             }
         }
+        onStatResult: {
+            if (!pendingBack || path !== pendingBack.remotePath)
+                return
+            if (err.length > 0) {
+                log("✘ 无法读取远程文件状态: " + err)
+                pendingBack = null
+                return
+            }
+            if (size !== pendingBack.baselineSize) {
+                // 远程文件在打开后被其它途径修改过，需确认才能覆盖
+                backConflictDialog.openFor(pendingBack, size)
+            } else {
+                doUploadBack(pendingBack)
+            }
+        }
     }
 
     ShellSession {
@@ -297,7 +314,20 @@ ApplicationWindow {
             if (ok) {
                 progressArea.taskSucceeded()
                 log("✔ " + label + " — " + message)
+                // 回传任务成功：更新登记基线，继续处理其余待回传文件
+                if (uploadBackActive && pendingBack
+                        && label === "上传 " + pendingBack.name) {
+                    uploadBackActive = false
+                    openRegistry.markSynced(pendingBack.remotePath)
+                    pendingBack = null
+                    if (openRegistry.dirtyCount > 0)
+                        startUploadBack()
+                }
             } else {
+                if (uploadBackActive) {
+                    uploadBackActive = false
+                    pendingBack = null
+                }
                 if (message.indexOf("已中断") >= 0)
                     progressArea.taskAborted()
                 else
@@ -318,11 +348,54 @@ ApplicationWindow {
                 log("✘ 打开失败: " + err)
                 return
             }
+            // 登记到回传注册表：监视本地副本，检测编辑后提示上传
+            openRegistry.registerOpen(remotePath, localPath, remoteSize)
             if (settingsStore.openPath(localPath))
                 log("✔ 已用本地应用打开 " + localPath)
             else
                 log("✘ 无法打开 " + localPath)
         }
+    }
+
+    // ---------- 编辑回传 ----------
+    property var pendingBack: null   // 当前正在走回传流程的登记项
+    property bool uploadBackActive: false
+
+    function startUploadBack() {
+        if (!browse.connected) {
+            log("✘ 未连接远程主机，无法回传")
+            return
+        }
+        var e = openRegistry.nextDirty()
+        if (e.remotePath === undefined) {
+            log("没有待回传的本地修改")
+            return
+        }
+        pendingBack = e
+        browse.statFile(e.remotePath)   // 先查远程状态做冲突检测
+    }
+
+    function uploadOneBack(remotePath) {
+        if (!browse.connected) {
+            log("✘ 未连接远程主机，无法回传")
+            return
+        }
+        var e = openRegistry.entryFor(remotePath)
+        if (e.remotePath === undefined)
+            return
+        pendingBack = e
+        browse.statFile(e.remotePath)
+    }
+
+    function doUploadBack(e) {
+        var slash = e.remotePath.lastIndexOf("/")
+        var parentDir = slash > 0 ? e.remotePath.substring(0, slash) : "/"
+        transfer.host = browse.host
+        transfer.port = browse.port
+        transfer.user = browse.user
+        transfer.password = browse.password
+        uploadBackActive = true
+        transfer.enqueueUpload([e.localPath], parentDir)
     }
 
     DirModel {
@@ -488,6 +561,7 @@ ApplicationWindow {
                 remoteReady: browse.connected
                 onDropToPeer: startTransfer("remote", "local", paths)
                 onOpenFile: openRemotePath(remotePane.model, index)
+                onUploadBack: uploadOneBack(remotePane.model.pathAt(index))
             }
         }
     }
@@ -525,6 +599,12 @@ ApplicationWindow {
                 }
                 Item { Layout.fillWidth: true; visible: !progressArea.visible }
 
+                UiButton {
+                    id: uploadBackButton
+                    visible: openRegistry.dirtyCount > 0
+                    text: "上传修改(" + openRegistry.dirtyCount + ")"
+                    onClicked: startUploadBack()
+                }
                 UiButton {
                     text: termPanel.visible ? "关闭终端" : "终端"
                     onClicked: toggleTerminal()
@@ -645,6 +725,69 @@ ApplicationWindow {
                     }
                 }
             }
+        }
+    }
+
+    // 监视到本地副本被编辑时提醒（状态行橙色提示）
+    Connections {
+        target: openRegistry
+        onFileModified: {
+            var name = remotePath.split("/").pop()
+            log("⚠ " + name + " 已在本地修改，可点击“上传修改”回传远程")
+        }
+    }
+
+    // ---------- 回传冲突确认 ----------
+    Dialog {
+        id: backConflictDialog
+        modal: true
+        title: "远程文件已变更"
+        padding: 14
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
+        property var entry: null
+        property int remoteSize: 0
+
+        function openFor(e, size) {
+            entry = e
+            remoteSize = size
+            open()
+        }
+
+        background: Rectangle {
+            radius: 10
+            color: "#ffffff"
+            border.width: 1
+            border.color: "#e3e7ee"
+        }
+        header: Label {
+            text: backConflictDialog.title
+            font.pixelSize: 14
+            font.bold: true
+            color: "#2b3138"
+            leftPadding: 14
+            topPadding: 12
+            bottomPadding: 4
+        }
+        footer: RowLayout {
+            spacing: 8
+            Item { Layout.fillWidth: true }
+            UiButton { text: "取消"; onClicked: backConflictDialog.close() }
+            UiButton { primary: true; text: "仍要覆盖"; onClicked: {
+                if (backConflictDialog.entry)
+                    doUploadBack(backConflictDialog.entry)
+                backConflictDialog.close()
+            } }
+        }
+        Label {
+            width: 340
+            wrapMode: Text.Wrap
+            color: "#3a414a"
+            text: "远程文件「" + (backConflictDialog.entry ? backConflictDialog.entry.name : "") +
+                  "」在打开后被其它途径修改过（当前 " +
+                  Utils.formatBytes(backConflictDialog.remoteSize) + "，打开时 " +
+                  Utils.formatBytes(backConflictDialog.entry ? backConflictDialog.entry.baselineSize : 0) +
+                  "）。仍要用本地副本覆盖远程文件吗？"
         }
     }
 

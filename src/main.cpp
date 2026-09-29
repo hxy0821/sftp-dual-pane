@@ -9,6 +9,7 @@
 #include "browsethread.h"
 #include "sftpclient.h"
 #include "settingsstore.h"
+#include "openregistry.h"
 #include "shellsession.h"
 #include "transferthread.h"
 
@@ -30,6 +31,8 @@ int main(int argc, char *argv[])
     qmlRegisterType<ShellSession>("App", 1, 0, "ShellSession");
 
     QQmlApplicationEngine engine;
+    OpenRegistry openRegistry;
+    engine.rootContext()->setContextProperty(QStringLiteral("openRegistry"), &openRegistry);
     engine.rootContext()->setContextProperty(QStringLiteral("settingsStore"),
                                              SettingsStore::instance());
     engine.load(QUrl(QStringLiteral("qrc:/qml/main.qml")));

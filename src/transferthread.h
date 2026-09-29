@@ -55,7 +55,8 @@ signals:
     void taskFinished(const QString &label, bool ok, const QString &message);
     void taskDone(bool upload, bool ok);
     void allFinished();
-    void openReady(const QString &localPath, bool ok, const QString &err);
+    void openReady(const QString &localPath, const QString &remotePath, qint64 remoteSize,
+                   bool ok, const QString &err);
 
 protected:
     void run() override;
@@ -65,6 +66,7 @@ private:
         bool isDir;
         QString local;
         QString remote;
+        qint64 size = 0;
     };
 
     void runTask(const TransferTask &t, SftpClient &client);

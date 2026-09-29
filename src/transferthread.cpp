@@ -237,7 +237,7 @@ void TransferThread::runTask(const TransferTask &t, SftpClient &client)
     if (t.openAfter) {
         for (const PlanItem &p : plan) {
             if (!p.isDir) {
-                emit openReady(p.local, true, QString());
+                emit openReady(p.local, p.remote, p.size, true, QString());
                 return;
             }
         }
@@ -283,7 +283,7 @@ void TransferThread::collectRemotePlan(SftpClient &client, const QString &remote
         if (!err.isEmpty())
             return;
     } else {
-        plan.append({ false, QDir(localDir).absoluteFilePath(fi.name), remotePath });
+        plan.append({ false, QDir(localDir).absoluteFilePath(fi.name), remotePath, fi.size });
         total += fi.size;
     }
 }

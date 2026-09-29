@@ -41,11 +41,13 @@ public:
     Q_INVOKABLE void makeFile(const QString &path);
     Q_INVOKABLE void removeEntry(const QString &path);
     Q_INVOKABLE void renameEntry(const QString &oldPath, const QString &newPath);
+    Q_INVOKABLE void statFile(const QString &path);
 
 signals:
     void connectFinished(bool ok, const QString &err);
     void listed(const QString &path, const QVariantList &entries, const QString &err);
     void opFinished(const QString &op, bool ok, const QString &err);
+    void statResult(const QString &path, qint64 size, const QString &err);
     void disconnected();
     void connectedChanged();
 
@@ -53,7 +55,7 @@ protected:
     void run() override;
 
 private:
-    enum Op { OpConnect, OpList, OpMkdir, OpMkfile, OpRemove, OpRename, OpDisconnect, OpQuit };
+    enum Op { OpConnect, OpList, OpMkdir, OpMkfile, OpRemove, OpRename, OpStat, OpDisconnect, OpQuit };
     struct Cmd {
         Op op;
         QString a, b;
