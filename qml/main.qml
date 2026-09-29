@@ -19,6 +19,9 @@ ApplicationWindow {
     property string termStatusText: "未连接"
     property string termStatusColor: "#808080"
     property int termInputStart: 0
+    // 当前表单实际载入的已保存连接名；为空表示表单是手动输入的新连接。
+    // 下拉框的高亮始终跟随它，保证“看到的名字”和“表单里的值”一致
+    property string loadedConnection: ""
     property string remoteStart: {
         var p = settingsStore.lastRemotePath()
         return (p && p.length) ? p : "/"
@@ -35,6 +38,36 @@ ApplicationWindow {
 
     function refreshSaved() {
         savedCombo.model = settingsStore.savedNames()
+        // ComboBox 换模型后会把 currentIndex 归 0，这里按当前载入的连接重新对齐，
+        // 避免出现“下拉框显示着某个连接、表单里却是空/别的值”的错位观感
+        var idx = savedCombo.model.indexOf(loadedConnection)
+        savedCombo.currentIndex = idx
+    }
+
+    function clearLoaded() {
+        loadedConnection = ""
+        savedCombo.currentIndex = -1
+    }
+
+    // 把已保存连接载入表单；autoConnect 为 true 时顺带一键连接
+    function applySaved(index, autoConnect) {
+        var name = savedCombo.model[index]
+        var m = settingsStore.connection(name)
+        if (!m || !m.host)
+            return
+        hostField.text = m.host
+        portField.text = m.port ? m.port.toString() : "22"
+        userField.text = m.user ? m.user : ""
+        passField.text = m.password ? m.password : ""
+        loadedConnection = name
+        savedCombo.currentIndex = index
+        settingsStore.setLastConnection(name)
+        if (autoConnect) {
+            // 已连接其它主机时，先断开再连所选设备，实现一键切换
+            if (browse.connected)
+                doDisconnect()
+            doConnect()
+        }
     }
 
     function doConnect() {
@@ -254,19 +287,7 @@ ApplicationWindow {
                 id: savedCombo
                 Layout.preferredWidth: 170
                 displayText: currentIndex < 0 ? "已保存连接" : currentText
-                onActivated: {
-                    var m = settingsStore.connection(savedCombo.model[index])
-                    if (!m || !m.host)
-                        return
-                    hostField.text = m.host
-                    portField.text = m.port ? m.port.toString() : "22"
-                    userField.text = m.user ? m.user : ""
-                    passField.text = m.password ? m.password : ""
-                    // 已连接其它主机时，先断开再连所选设备，实现一键切换
-                    if (browse.connected)
-                        doDisconnect()
-                    doConnect()
-                }
+                onActivated: applySaved(index, true)
                 popup.onClosed: savedCombo.focus = false
             }
             ToolButton { text: "保存"; onClicked: saveDialog.openForSave() }
@@ -274,7 +295,10 @@ ApplicationWindow {
                 text: "删除"
                 onClicked: {
                     if (savedCombo.currentIndex >= 0) {
-                        settingsStore.removeConnection(savedCombo.model[savedCombo.currentIndex])
+                        var name = savedCombo.model[savedCombo.currentIndex]
+                        settingsStore.removeConnection(name)
+                        if (loadedConnection === name)
+                            loadedConnection = ""
                         refreshSaved()
                     }
                 }
@@ -288,7 +312,7 @@ ApplicationWindow {
                     portField.text = "22"
                     userField.text = ""
                     passField.text = ""
-                    savedCombo.currentIndex = -1
+                    clearLoaded()
                     hostField.forceActiveFocus()
                 }
             }
@@ -301,6 +325,7 @@ ApplicationWindow {
                 Layout.preferredWidth: 150
                 placeholderText: "IP 或主机名"
                 selectByMouse: true
+                onTextEdited: clearLoaded()
             }
             Label { text: "端口" }
             TextField {
@@ -308,6 +333,7 @@ ApplicationWindow {
                 Layout.preferredWidth: 60
                 text: "22"
                 selectByMouse: true
+                onTextEdited: clearLoaded()
             }
             Label { text: "用户" }
             TextField {
@@ -315,6 +341,7 @@ ApplicationWindow {
                 Layout.preferredWidth: 110
                 placeholderText: "用户名"
                 selectByMouse: true
+                onTextEdited: clearLoaded()
             }
             Label { text: "密码" }
             TextField {
@@ -323,6 +350,7 @@ ApplicationWindow {
                 echoMode: TextInput.Password
                 placeholderText: "密码"
                 selectByMouse: true
+                onTextEdited: clearLoaded()
             }
             Button {
                 id: connectButton
@@ -579,6 +607,9 @@ ApplicationWindow {
                 password: savePassBox.checked ? passField.text : "",
                 savePassword: savePassBox.checked
             })
+            // 让下拉框立即选中刚保存的这条，并记为下次启动的默认连接
+            loadedConnection = name
+            settingsStore.setLastConnection(name)
             refreshSaved()
             log("已保存连接 " + name)
         }
@@ -591,6 +622,14 @@ ApplicationWindow {
 
     Component.onCompleted: {
         refreshSaved()
+        // 启动时自动载入上次使用的连接（没有记录就用第一条），把表单填好。
+        // 这样下拉框里显示的名字直接点“连接”就能用，不用再去列表重选一遍
+        var last = settingsStore.lastConnection()
+        var idx = last && last.length ? savedCombo.model.indexOf(last) : -1
+        if (idx < 0 && savedCombo.count > 0)
+            idx = 0
+        if (idx >= 0)
+            applySaved(idx, false)
         var lp = settingsStore.lastLocalPath()
         localModel.setDir(lp && lp.length ? lp : settingsStore.homeDir())
         log("就绪。在左侧拖拽到右侧=上传，右侧拖到左侧=下载。")

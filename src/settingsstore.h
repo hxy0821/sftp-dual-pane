@@ -20,6 +20,8 @@ public:
     Q_INVOKABLE void setLastLocalPath(const QString &p);
     Q_INVOKABLE QString lastRemotePath() const;
     Q_INVOKABLE void setLastRemotePath(const QString &p);
+    Q_INVOKABLE QString lastConnection() const;
+    Q_INVOKABLE void setLastConnection(const QString &name);
     Q_INVOKABLE QString homeDir() const;
 
 private:

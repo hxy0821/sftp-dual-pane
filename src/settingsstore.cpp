@@ -101,6 +101,16 @@ void SettingsStore::setLastRemotePath(const QString &p)
     QSettings().setValue(QStringLiteral("lastRemotePath"), p);
 }
 
+QString SettingsStore::lastConnection() const
+{
+    return QSettings().value(QStringLiteral("lastConnection")).toString();
+}
+
+void SettingsStore::setLastConnection(const QString &name)
+{
+    QSettings().setValue(QStringLiteral("lastConnection"), name);
+}
+
 QString SettingsStore::homeDir() const
 {
     return QDir::homePath();
