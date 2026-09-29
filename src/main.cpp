@@ -2,6 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QByteArray>
+#include <QIcon>
 
 #include <libssh2.h>
 
@@ -21,6 +22,7 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
     QCoreApplication::setOrganizationName(QStringLiteral("selftools"));
     QCoreApplication::setApplicationName(QStringLiteral("sftp-dual-pane"));
+    QGuiApplication::setWindowIcon(QIcon(QStringLiteral(":/packaging/sftp-dual-pane.svg")));
 
     libssh2_init(0);
 

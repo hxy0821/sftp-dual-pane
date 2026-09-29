@@ -3,7 +3,7 @@ import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.11
 
 // 终端面板（spec §19-23）：仅调整布局/容器/标题栏/折叠，终端核心逻辑不变
-Rectangle {
+Item {
     id: panel
 
     property bool sessionRunning: false               // 由上层（ShellSession）同步
@@ -13,10 +13,16 @@ Rectangle {
     signal closeRequested()
     signal commandRequested(string line)              // 终端输入行/控制字符 → ShellSession
 
-    color: "#171b21"
-    radius: 8
-    border.width: 1
-    border.color: "#2c333d"
+    CardShadow { anchors.fill: parent; radius: 8; strength: 0.8 }
+
+    Rectangle {
+        id: termBg
+        anchors.fill: parent
+        radius: 8
+        color: "#171b21"
+        border.width: 1
+        border.color: "#2c333d"
+    }
 
     function appendOutput(text) { appendTermOutput(text) }
     function setConnected() {

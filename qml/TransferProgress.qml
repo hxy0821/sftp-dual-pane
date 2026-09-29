@@ -32,6 +32,11 @@ Rectangle {
         color: control.failed ? "#e5484d"
              : control.cancelled ? "#a9b4c2"
              : control.finished ? "#2fa356" : "#3a7afe"
+        // 竖向渐变：上浅下深，进度条更有质感
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: Qt.lighter(fill.color, 1.22) }
+            GradientStop { position: 1.0; color: fill.color }
+        }
 
         // phase 在 0~1 间循环推进；暂停用 Animation.paused 冻结，恢复后原地继续
         property real phase: 0

@@ -3,7 +3,7 @@ import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.11
 import "utils.js" as Utils
 
-Rectangle {
+Item {
     id: pane
 
     property var model: null
@@ -18,12 +18,27 @@ Rectangle {
     signal dropToPeer(var paths)
     signal openFile(int index)   // 双击/菜单打开文件（本地直接打开，远程先下载到缓存）
     signal uploadBack(int index) // 右键“上传本地修改”（仅远程面板、有未回传修改时可见）
+    signal transferSelected(bool toPeer) // 头部“上传选中/下载选中”按钮
+
+    readonly property int selectedCount: {
+        if (pane.multiSet.length > 0)
+            return pane.multiSet.length
+        return listView.currentIndex >= 0 ? 1 : 0
+    }
 
     z: pane.dragActive ? 50 : 0
-    color: "#ffffff"
-    radius: 8
-    border.width: 1
-    border.color: "#e3e7ee"
+
+    // 卡片：阴影 + 白底（阴影为纯 QML 多层叠加，避免图形特效在后端差异下的异常）
+    CardShadow { anchors.fill: parent; radius: 8 }
+
+    Rectangle {
+        id: cardBg
+        anchors.fill: parent
+        radius: 8
+        color: "#ffffff"
+        border.width: 1
+        border.color: "#e3e7ee"
+    }
 
     function clearMulti() { pane.multiSet = [] }
     function toggleMulti(i) {
@@ -51,24 +66,47 @@ Rectangle {
         anchors.margins: 8
         spacing: 6
 
+        // 头部第一行：面板标识 + 路径
         RowLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: 8
 
+            // 圆角色块 + 方向箭头（本机=蓝↑ 上传 / 远程=绿↓ 下载）
             Rectangle {
-                Layout.preferredWidth: 8
-                Layout.preferredHeight: 8
-                radius: 4
-                color: pane.side === "remote" ? "#2fa356" : "#3a7afe"
+                Layout.preferredWidth: 22
+                Layout.preferredHeight: 22
+                radius: 6
+                color: pane.side === "remote" ? "#e6f6ec" : "#e8f0ff"
+
+                Canvas {
+                    anchors.centerIn: parent
+                    width: 13
+                    height: 13
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.reset()
+                        ctx.strokeStyle = pane.side === "remote" ? "#2fa356" : "#3a7afe"
+                        ctx.lineWidth = 1.7
+                        ctx.lineCap = "round"
+                        ctx.lineJoin = "round"
+                        ctx.beginPath()
+                        if (pane.side === "remote") {
+                            ctx.moveTo(6.5, 1.4); ctx.lineTo(6.5, 8.2)
+                            ctx.moveTo(3.4, 5.1); ctx.lineTo(6.5, 8.2); ctx.lineTo(9.6, 5.1)
+                        } else {
+                            ctx.moveTo(6.5, 11.6); ctx.lineTo(6.5, 4.8)
+                            ctx.moveTo(3.4, 7.9); ctx.lineTo(6.5, 4.8); ctx.lineTo(9.6, 7.9)
+                        }
+                        ctx.moveTo(2.2, 11.8); ctx.lineTo(10.8, 11.8)
+                        ctx.stroke()
+                    }
+                    Component.onCompleted: requestPaint()
+                }
             }
             Label {
                 text: pane.title
                 font.bold: true
                 color: "#2b3138"
-            }
-            UiTool {
-                text: "上一级"
-                onClicked: if (pane.model) pane.model.goUp()
             }
             UiInput {
                 id: pathField
@@ -79,8 +117,45 @@ Rectangle {
                         pane.model.setDir(text)
                 }
             }
-            UiTool { text: "刷新"; onClicked: if (pane.model) pane.model.refresh() }
-            UiTool { text: "新建"; onClicked: mkdirDialog.openFor() }
+        }
+
+        // 头部第二行：操作按钮（本机=上传选中 / 远程=下载选中）
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 2
+
+            UiAction {
+                text: "上一级"
+                iconName: "up"
+                onClicked: if (pane.model) pane.model.goUp()
+            }
+            UiAction {
+                text: "刷新"
+                iconName: "refresh"
+                onClicked: if (pane.model) pane.model.refresh()
+            }
+            UiAction {
+                text: "新建"
+                iconName: "newfolder"
+                onClicked: mkdirDialog.openFor()
+            }
+            Item { Layout.fillWidth: true }
+            UiAction {
+                visible: pane.side === "local"
+                text: "上传选中"
+                iconName: "upload"
+                enabled: pane.selectedCount > 0 && pane.remoteReady
+                tint: enabled ? "#1d5fd6" : "#8a93a0"
+                onClicked: pane.transferSelected(true)
+            }
+            UiAction {
+                visible: pane.side === "remote"
+                text: "下载选中"
+                iconName: "download"
+                enabled: pane.selectedCount > 0 && pane.remoteReady
+                tint: enabled ? "#1d5fd6" : "#8a93a0"
+                onClicked: pane.transferSelected(false)
+            }
         }
 
         Rectangle { Layout.fillWidth: true; height: 1; color: "#eef1f4" }
@@ -165,10 +240,18 @@ Rectangle {
                         Rectangle {
                             visible: !model.isDir
                             anchors.centerIn: parent
-                            width: 12
-                            height: 13
+                            width: 13
+                            height: 14
                             radius: 3
                             color: Utils.typeColor(model.name)
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: Utils.typeTag(model.name)
+                                color: "#ffffff"
+                                font.pixelSize: 7
+                                font.bold: true
+                            }
                         }
                     }
 
@@ -275,22 +358,54 @@ Rectangle {
                 }
             }
 
-            Label {
-                parent: pane
-        x: (pane.width - width) / 2
-        y: (pane.height - height) / 2
+            Column {
+                parent: listView
+                anchors.centerIn: parent
+                spacing: 12
                 visible: listView.count === 0
-                text: (pane.side === "remote" && !pane.remoteReady) ? "未连接远程主机" : "（空目录）"
-                color: "#9aa3b0"
+
+                Canvas {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: 40
+                    height: 40
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.reset()
+                        Utils.drawIcon(ctx,
+                                       (pane.side === "remote" && !pane.remoteReady) ? "ban" : "folderopen",
+                                       width, height, "#c3ccd8")
+                    }
+                    Component.onCompleted: requestPaint()
+                }
+                Label {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: (pane.side === "remote" && !pane.remoteReady) ? "未连接远程主机" : "（空目录）"
+                    color: "#9aa3b0"
+                }
             }
         }
 
+        // 栏底统计：共 N 项 | 选中 M 项
         RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+
             Label {
-                text: (listView.count || 0) + " 项"
+                text: "共 " + (listView.count || 0) + " 项"
                 color: "#8a93a0"
                 font.pixelSize: 11
             }
+            Rectangle {
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 9
+                color: "#e3e7ee"
+            }
+            Label {
+                text: "选中 " + pane.selectedCount + " 项"
+                color: pane.selectedCount > 0 ? "#1d5fd6" : "#8a93a0"
+                font.pixelSize: 11
+            }
+            Item { Layout.fillWidth: true }
         }
     }
 

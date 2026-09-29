@@ -4,6 +4,8 @@
         <file>qml/FilePane.qml</file>
         <file>qml/UiButton.qml</file>
         <file>qml/UiTool.qml</file>
+        <file>qml/UiAction.qml</file>
+        <file>qml/CardShadow.qml</file>
         <file>qml/UiInput.qml</file>
         <file>qml/UiCombo.qml</file>
         <file>qml/UiCheck.qml</file>
@@ -12,5 +14,6 @@
         <file>qml/TransferPanel.qml</file>
         <file>qml/TerminalPanel.qml</file>
         <file>qml/utils.js</file>
+        <file>packaging/sftp-dual-pane.svg</file>
     </qresource>
 </RCC>

@@ -171,15 +171,31 @@ Item {
             font.pixelSize: 12
         }
 
-        // 状态（列 6，左对齐）
-        Label {
+        // 状态（列 6）：状态圆点 + 文案
+        Item {
             x: row.cx(6)
             width: 60
-            horizontalAlignment: Text.AlignHCenter
+            height: 20
             anchors.verticalCenter: parent.verticalCenter
-            text: statusText
-            color: statusColor
-            font.pixelSize: 12
+
+            Row {
+                anchors.centerIn: parent
+                spacing: 4
+
+                Rectangle {
+                    width: 6
+                    height: 6
+                    radius: 3
+                    color: row.statusColor
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Label {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: row.statusText
+                    color: row.statusColor
+                    font.pixelSize: 12
+                }
+            }
         }
 
         // 操作（列 7，按钮组在操作列内水平居中）

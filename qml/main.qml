@@ -12,7 +12,7 @@ ApplicationWindow {
     // 连接栏完整宽度约 1215px（含边距），最小窗口宽度不能低于它，否则控件被裁剪
     minimumWidth: 1360
     minimumHeight: 620
-    title: "双栏文件传输 - SFTP"
+    title: "SFTP 文件传输"
     color: "#eef1f5"
     font.pixelSize: 13
 
@@ -219,11 +219,11 @@ ApplicationWindow {
 
     // ---------- 终端 ----------
     function openTerminal() {
+        bottomPage = 1   // 未连接时也先展示终端面板（面板自身显示未连接状态）
         if (!browse.connected) {
-            log("✘ 未连接远程主机，无法打开终端")
+            log("⚠ 未连接远程主机，连接后终端会自动启动")
             return
         }
-        bottomPage = 1
         if (!shell.running) {
             shell.host = browse.host
             shell.port = browse.port
@@ -253,6 +253,15 @@ ApplicationWindow {
             if (ok) {
                 log("✔ 已连接 " + browse.user + "@" + browse.host + ":" + browse.port)
                 remoteModel.setDir(root.remoteStart)
+                // 终端面板已打开时，连接成功后自动拉起 shell 会话
+                if (root.bottomPage === 1 && !shell.running) {
+                    shell.host = browse.host
+                    shell.port = browse.port
+                    shell.user = browse.user
+                    shell.password = browse.password
+                    shell.startSession()
+                    terminalPanel.focusTerminal()
+                }
             } else {
                 log("✘ 连接失败: " + err)
             }
@@ -497,12 +506,21 @@ ApplicationWindow {
         anchors.bottom: parent.bottom
         anchors.leftMargin: 8
         anchors.topMargin: 8
-        anchors.bottomMargin: 8
+        anchors.bottomMargin: 5
         width: 132
         radius: 8
-        color: "#ffffff"
-        border.width: 1
-        border.color: "#e3e7ee"
+        color: "transparent"
+
+        CardShadow { anchors.fill: parent; radius: 8 }
+
+        Rectangle {
+            id: sideNavBg
+            anchors.fill: parent
+            radius: 8
+            color: "#ffffff"
+            border.width: 1
+            border.color: "#e3e7ee"
+        }
 
         Column {
             anchors.fill: parent
@@ -516,7 +534,7 @@ ApplicationWindow {
                 height: 38
                 radius: 6
                 readonly property bool active: bottomPage === 0
-    onActiveChanged: fileIco.requestPaint()
+                onActiveChanged: fileIco.requestPaint()
                 color: navFile.active ? "#e9f0ff" : (navMa1.containsMouse ? "#f2f6fc" : "transparent")
                 Rectangle { width: 3; height: 20; radius: 1.5; color: navFile.active ? "#3a7afe" : "transparent"
                             anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
@@ -545,7 +563,7 @@ ApplicationWindow {
                         Component.onCompleted: requestPaint()
                     }
                     Label { anchors.verticalCenter: parent.verticalCenter
-                            text: "传输文件"; color: navFile.active ? "#1d5fd6" : "#3a414a"
+                            text: "文件传输"; color: navFile.active ? "#1d5fd6" : "#3a414a"
                             font.bold: navFile.active }
                     Item { width: 4; height: 1 }
                     Rectangle {
@@ -610,6 +628,41 @@ ApplicationWindow {
                     onClicked: toggleTerminal()
                 }
             }
+
+            // 设置（复用连接管理菜单：保存 / 删除 / 新建连接）
+            Rectangle {
+                id: navSettings
+                width: parent.width
+                height: 38
+                radius: 6
+                color: navMa4.containsMouse ? "#f2f6fc" : "transparent"
+                Row {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    spacing: 8
+                    Canvas {
+                        id: settingsIco
+                        width: 16; height: 16
+                        anchors.verticalCenter: parent.verticalCenter
+                        onPaint: {
+                            var ctx = getContext("2d")
+                            ctx.reset()
+                            Utils.drawIcon(ctx, "sliders", width, height,
+                                           navMa4.containsMouse ? "#3a7afe" : "#5a6472")
+                        }
+                        Component.onCompleted: requestPaint()
+                    }
+                    Label { anchors.verticalCenter: parent.verticalCenter
+                            text: "设置"; color: "#3a414a" }
+                }
+                MouseArea {
+                    id: navMa4
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onContainsMouseChanged: settingsIco.requestPaint()
+                    onClicked: connMenu.popup(navSettings, navSettings.width + 4, -2)
+                }
+            }
         }
     }
 
@@ -617,18 +670,24 @@ ApplicationWindow {
         anchors.fill: parent
         anchors.topMargin: 8
         anchors.rightMargin: 8
-        anchors.bottomMargin: 8
-        anchors.leftMargin: 148
-        spacing: 8
+        anchors.bottomMargin: 5
+        anchors.leftMargin: 146
+        spacing: 6
 
         // 连接栏（卡片）
-        Rectangle {
+        Item {
             Layout.fillWidth: true
             implicitHeight: connRow.implicitHeight + 16
-            radius: 8
-            color: "#ffffff"
-            border.width: 1
-            border.color: "#e3e7ee"
+
+            CardShadow { anchors.fill: parent; radius: 8 }
+
+            Rectangle {
+                anchors.fill: parent
+                radius: 8
+                color: "#ffffff"
+                border.width: 1
+                border.color: "#e3e7ee"
+            }
 
             RowLayout {
                 id: connRow
@@ -670,7 +729,7 @@ ApplicationWindow {
                     text: "22"
                     onTextEdited: clearLoaded()
                 }
-                Label { text: "用户"; color: "#5a6472" }
+                Label { text: "用户名"; color: "#5a6472" }
                 UiInput {
                     id: userField
                     Layout.preferredWidth: 110
@@ -687,8 +746,9 @@ ApplicationWindow {
                 }
                 UiButton {
                     id: connectButton
-                    Layout.preferredWidth: 84
+                    Layout.preferredWidth: 96
                     text: connecting ? "连接中…" : (browse.connected ? "断开" : "连接")
+                    iconName: "link"
                     primary: !browse.connected
                     danger: browse.connected
                     onClicked: {
@@ -705,13 +765,8 @@ ApplicationWindow {
                         remoteModel.showHidden = checked
                     }
                 }
-                // 吸收窗口多余宽度，把「管理」顶到最右，避免空隙摊进各控件之间
+                // 吸收窗口多余宽度，右侧留白（连接管理已移至左侧「设置」）
                 Item { Layout.fillWidth: true }
-                UiTool {
-                    id: connManageBtn
-                    text: "管理"
-                    onClicked: connMenu.popup(connManageBtn, 0, connManageBtn.height + 4)
-                }
             }
         }
 
@@ -719,7 +774,7 @@ ApplicationWindow {
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 8
+            spacing: 6
 
             FilePane {
                 id: localPane
@@ -729,11 +784,79 @@ ApplicationWindow {
                 side: "local"
                 title: "本机 (Local)"
                 peerPane: remotePane
+                remoteReady: browse.connected
                 onDropToPeer: startTransfer("local", "remote", paths)
                 onOpenFile: openLocalPath(localPane.model.pathAt(index))
+                onTransferSelected: startTransfer("local", "remote", localPane.selectedPaths())
             }
 
-            Rectangle { Layout.fillHeight: true; width: 1; color: "#d8dbe0" }
+            // 双栏中间：上传 / 下载快捷按钮（左右方向箭头，对选中项生效）
+            Item {
+                Layout.fillHeight: true
+                Layout.preferredWidth: 28
+
+                Column {
+                    anchors.centerIn: parent
+                    spacing: 6
+
+                    ToolButton {
+                        id: midUploadBtn
+                        implicitWidth: 26
+                        implicitHeight: 26
+                        enabled: localPane.selectedCount > 0 && browse.connected
+                        opacity: enabled ? 1.0 : 0.35
+                        hoverEnabled: true
+                        ToolTip.visible: hovered
+                        ToolTip.text: "上传选中项到远程"
+                        onClicked: startTransfer("local", "remote", localPane.selectedPaths())
+
+                        contentItem: Canvas {
+                            anchors.centerIn: parent
+                            width: 14
+                            height: 14
+                            onPaint: {
+                                var ctx = getContext("2d")
+                                ctx.reset()
+                                Utils.drawIcon(ctx, "arrowRight", width, height, "#ffffff")
+                            }
+                            Component.onCompleted: requestPaint()
+                        }
+                        background: Rectangle {
+                            radius: 13
+                            color: midUploadBtn.pressed ? "#2e63d6"
+                                 : midUploadBtn.hovered ? "#5589ff" : "#3a7afe"
+                        }
+                    }
+                    ToolButton {
+                        id: midDownloadBtn
+                        implicitWidth: 26
+                        implicitHeight: 26
+                        enabled: remotePane.selectedCount > 0 && browse.connected
+                        opacity: enabled ? 1.0 : 0.35
+                        hoverEnabled: true
+                        ToolTip.visible: hovered
+                        ToolTip.text: "下载选中项到本机"
+                        onClicked: startTransfer("remote", "local", remotePane.selectedPaths())
+
+                        contentItem: Canvas {
+                            anchors.centerIn: parent
+                            width: 14
+                            height: 14
+                            onPaint: {
+                                var ctx = getContext("2d")
+                                ctx.reset()
+                                Utils.drawIcon(ctx, "arrowLeft", width, height, "#ffffff")
+                            }
+                            Component.onCompleted: requestPaint()
+                        }
+                        background: Rectangle {
+                            radius: 13
+                            color: midDownloadBtn.pressed ? "#2e63d6"
+                                 : midDownloadBtn.hovered ? "#5589ff" : "#3a7afe"
+                        }
+                    }
+                }
+            }
 
             FilePane {
                 id: remotePane
@@ -747,6 +870,7 @@ ApplicationWindow {
                 onDropToPeer: startTransfer("remote", "local", paths)
                 onOpenFile: openRemotePath(remotePane.model, index)
                 onUploadBack: uploadOneBack(remotePane.model.pathAt(index))
+                onTransferSelected: startTransfer("remote", "local", remotePane.selectedPaths())
             }
         }
     }
@@ -760,6 +884,7 @@ ApplicationWindow {
             id: bottomCol
             anchors.fill: parent
             anchors.margins: 8
+            anchors.topMargin: 5
             spacing: 6
 
             TransferPanel {
@@ -801,9 +926,17 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 implicitHeight: 26
                 radius: 6
-                color: "#ffffff"
-                border.width: 1
-                border.color: "#e3e7ee"
+                color: "transparent"
+
+                CardShadow { anchors.fill: parent; radius: 6 }
+
+                Rectangle {
+                    anchors.fill: parent
+                    radius: 6
+                    color: "#ffffff"
+                    border.width: 1
+                    border.color: "#e3e7ee"
+                }
 
                 RowLayout {
                     anchors.fill: parent

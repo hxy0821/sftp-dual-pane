@@ -1,10 +1,11 @@
 import QtQuick 2.11
 import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.11
+import "utils.js" as Utils
 
 // 传输队列面板（spec §32）：任务列表 + 队列/已完成 Tab，只展示不含 SFTP 逻辑
 // 列位置由 colPos 统一定义，表头与数据行共用同一套坐标，保证逐列对齐
-Rectangle {
+Item {
     id: panel
 
     property alias model: listView.model
@@ -37,10 +38,16 @@ Rectangle {
         return xs                          // 8 个 x 坐标
     }
 
-    color: "#ffffff"
-    radius: 8
-    border.width: 1
-    border.color: "#e3e7ee"
+    CardShadow { anchors.fill: parent; radius: 8 }
+
+    Rectangle {
+        id: cardBg
+        anchors.fill: parent
+        radius: 8
+        color: "#ffffff"
+        border.width: 1
+        border.color: "#e3e7ee"
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -149,11 +156,27 @@ Rectangle {
                 onDeleteClicked: panel.deleteRequested(index)
             }
 
-            Label {
+            Column {
                 anchors.centerIn: parent
+                spacing: 10
                 visible: listView.count === 0
-                text: panel.currentTab === 0 ? "暂无传输任务" : "暂无已完成记录"
-                color: "#9aa3b0"
+
+                Canvas {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: 36
+                    height: 36
+                    onPaint: {
+                        var ctx = getContext("2d")
+                        ctx.reset()
+                        Utils.drawIcon(ctx, "inbox", width, height, "#c3ccd8")
+                    }
+                    Component.onCompleted: requestPaint()
+                }
+                Label {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: panel.currentTab === 0 ? "暂无传输任务" : "暂无已完成记录"
+                    color: "#9aa3b0"
+                }
             }
         }
     }
