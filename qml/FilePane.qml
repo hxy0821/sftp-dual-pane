@@ -419,9 +419,12 @@ Rectangle {
         }
 
         header: Item {
-            implicitHeight: 44
+            implicitHeight: 56
             RowLayout {
                 anchors.fill: parent
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                anchors.topMargin: 16
                 spacing: 12
 
                 Rectangle {
@@ -500,15 +503,23 @@ Rectangle {
             }
         }
 
-        footer: RowLayout {
-            spacing: 8
-            Item { Layout.fillWidth: true }
-            UiButton { text: "取消"; onClicked: mkdirDialog.reject() }
-            UiButton {
-                primary: true
-                text: "创建"
-                enabled: mkdirField.text.trim().length > 0
-                onClicked: mkdirDialog.accept()
+        footer: Item {
+            implicitHeight: 46
+            RowLayout {
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                spacing: 8
+                Item { Layout.fillWidth: true }
+                UiButton { text: "取消"; onClicked: mkdirDialog.reject() }
+                UiButton {
+                    primary: true
+                    text: "创建"
+                    enabled: mkdirField.text.trim().length > 0
+                    onClicked: mkdirDialog.accept()
+                }
             }
         }
 
@@ -537,9 +548,12 @@ Rectangle {
         }
 
         header: Item {
-            implicitHeight: 44
+            implicitHeight: 56
             RowLayout {
                 anchors.fill: parent
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                anchors.topMargin: 16
                 spacing: 12
 
                 Rectangle {
@@ -620,15 +634,23 @@ Rectangle {
             }
         }
 
-        footer: RowLayout {
-            spacing: 8
-            Item { Layout.fillWidth: true }
-            UiButton { text: "取消"; onClicked: newFileDialog.reject() }
-            UiButton {
-                primary: true
-                text: "创建"
-                enabled: newFileField.text.trim().length > 0
-                onClicked: newFileDialog.accept()
+        footer: Item {
+            implicitHeight: 46
+            RowLayout {
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                spacing: 8
+                Item { Layout.fillWidth: true }
+                UiButton { text: "取消"; onClicked: newFileDialog.reject() }
+                UiButton {
+                    primary: true
+                    text: "创建"
+                    enabled: newFileField.text.trim().length > 0
+                    onClicked: newFileDialog.accept()
+                }
             }
         }
 
@@ -643,75 +665,96 @@ Rectangle {
     Dialog {
         id: renameDialog
         modal: true
-        title: "重命名"
-        padding: 14
+        padding: 16
+        width: 420
         parent: pane
         x: (pane.width - width) / 2
         y: (pane.height - height) / 2
         property int row: -1
 
         background: Rectangle {
-            radius: 10
+            radius: 12
             color: "#ffffff"
             border.width: 1
             border.color: "#e3e7ee"
         }
+
         header: Item {
-            implicitHeight: 48
+            implicitHeight: 56
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 14
-                anchors.rightMargin: 14
-                anchors.topMargin: 12
-                spacing: 10
-            Rectangle {
-                Layout.preferredWidth: 34
-                Layout.preferredHeight: 34
-                radius: 17
-                color: "#e8f0ff"
-                Canvas {
-                    anchors.centerIn: parent
-                    width: 15; height: 15
-                    onPaint: {
-                        var ctx = getContext("2d")
-                        ctx.reset()
-                        ctx.strokeStyle = "#3a7afe"
-                        ctx.lineWidth = 2.2
-                        ctx.lineCap = "round"
-                        ctx.beginPath(); ctx.moveTo(11.5, 3.5); ctx.lineTo(4.5, 10.5); ctx.stroke()
-                        ctx.fillStyle = "#3a7afe"
-                        ctx.beginPath()
-                        ctx.moveTo(2.2, 13.8); ctx.lineTo(3.4, 10.4); ctx.lineTo(5.6, 12.6)
-                        ctx.closePath(); ctx.fill()
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                anchors.topMargin: 16
+                spacing: 12
+
+                Rectangle {
+                    Layout.preferredWidth: 40
+                    Layout.preferredHeight: 40
+                    radius: 20
+                    color: "#e8f0ff"
+
+                    Canvas {
+                        anchors.centerIn: parent
+                        width: 15; height: 15
+                        onPaint: {
+                            var ctx = getContext("2d")
+                            ctx.reset()
+                            ctx.strokeStyle = "#3a7afe"
+                            ctx.lineWidth = 2.2
+                            ctx.lineCap = "round"
+                            ctx.beginPath(); ctx.moveTo(11.5, 3.5); ctx.lineTo(4.5, 10.5); ctx.stroke()
+                            ctx.fillStyle = "#3a7afe"
+                            ctx.beginPath()
+                            ctx.moveTo(2.2, 13.8); ctx.lineTo(3.4, 10.4); ctx.lineTo(5.6, 12.6)
+                            ctx.closePath(); ctx.fill()
+                        }
+                        Component.onCompleted: requestPaint()
                     }
-                    Component.onCompleted: requestPaint()
                 }
+
+                ColumnLayout {
+                    spacing: 2
+                    Label { text: "重命名"; font.pixelSize: 15; font.bold: true; color: "#2b3138" }
+                    Label { text: "仅修改名称，内容不变"; font.pixelSize: 12; color: "#8a93a0" }
+                }
+                Item { Layout.fillWidth: true }
             }
-            Label {
-                text: renameDialog.title
-                font.pixelSize: 14
-                font.bold: true
-                color: "#2b3138"
-                Layout.fillWidth: true
-            }
-        }
-        }
-        footer: RowLayout {
-            spacing: 8
-            Item { Layout.fillWidth: true }
-            UiButton { text: "取消"; onClicked: renameDialog.reject() }
-            UiButton { primary: true; text: "重命名"; onClicked: renameDialog.accept() }
         }
 
         ColumnLayout {
-            spacing: 8
-            UiInput {
-                id: renameField
-                Layout.preferredWidth: 280
-                placeholderText: "新名称"
-                onAccepted: renameDialog.accept()
+            anchors.left: parent.left
+            anchors.right: parent.right
+            spacing: 14
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                Label { text: "名称"; font.pixelSize: 11; color: "#9aa3b0" }
+                UiInput {
+                    id: renameField
+                    Layout.fillWidth: true
+                    placeholderText: "新名称"
+                    onAccepted: renameDialog.accept()
+                }
             }
         }
+
+        footer: Item {
+            implicitHeight: 46
+            RowLayout {
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                spacing: 8
+                Item { Layout.fillWidth: true }
+                UiButton { text: "取消"; onClicked: renameDialog.reject() }
+                UiButton { primary: true; text: "重命名"; onClicked: renameDialog.accept() }
+            }
+        }
+
         onAccepted: if (pane.model) pane.model.renameAt(renameDialog.row, renameField.text)
         function openFor(row) {
             renameDialog.row = row
@@ -725,12 +768,13 @@ Rectangle {
     Dialog {
         id: confirmDelete
         modal: true
-        padding: 0
-        width: 380
+        padding: 16
+        width: 420
         parent: pane
         x: (pane.width - width) / 2
         y: (pane.height - height) / 2
         property int row: -1
+        property string itemPath: ""
         property string message: ""
 
         background: Rectangle {
@@ -741,9 +785,12 @@ Rectangle {
         }
 
         header: Item {
-            implicitHeight: 44
+            implicitHeight: 56
             RowLayout {
                 anchors.fill: parent
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                anchors.topMargin: 16
                 spacing: 12
 
                 Rectangle {
@@ -774,24 +821,61 @@ Rectangle {
             anchors.right: parent.right
             spacing: 14
 
-            Label {
-                width: 340
-                wrapMode: Text.Wrap
-                color: "#3a414a"
-                text: confirmDelete.message
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                Label { text: "位置"; font.pixelSize: 11; color: "#9aa3b0" }
+                Rectangle {
+                    Layout.fillWidth: true
+                    height: 30
+                    radius: 6
+                    color: "#f5f7fa"
+                    Label {
+                        anchors.fill: parent
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
+                        verticalAlignment: Text.AlignVCenter
+                        text: confirmDelete.itemPath
+                        font.pixelSize: 11
+                        color: "#5a6472"
+                        elide: Text.ElideMiddle
+                    }
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+                Label { text: "操作"; font.pixelSize: 11; color: "#9aa3b0" }
+                Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    font.pixelSize: 13
+                    color: "#3a414a"
+                    text: confirmDelete.message
+                }
             }
         }
 
-        footer: RowLayout {
-            spacing: 8
-            Item { Layout.fillWidth: true }
-            UiButton { text: "取消"; onClicked: confirmDelete.reject() }
-            UiButton { danger: true; text: "删除"; onClicked: confirmDelete.accept() }
+        footer: Item {
+            implicitHeight: 46
+            RowLayout {
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
+                spacing: 8
+                Item { Layout.fillWidth: true }
+                UiButton { text: "取消"; onClicked: confirmDelete.reject() }
+                UiButton { danger: true; text: "删除"; onClicked: confirmDelete.accept() }
+            }
         }
 
         onAccepted: if (pane.model) pane.model.removeAt(confirmDelete.row)
         function openFor(row) {
             confirmDelete.row = row
+            confirmDelete.itemPath = pane.model.pathAt(row)
             confirmDelete.message = "确定删除「" + pane.model.nameAt(row) + "」？" +
                                     (pane.model.isDirAt(row) ? "\n（目录将被递归删除）" : "")
             open()
