@@ -22,12 +22,17 @@ TransferThread::~TransferThread()
 
 void TransferThread::enqueueUpload(const QStringList &localPaths, const QString &remoteDir)
 {
+    QVector<QPair<QString, QString>> queued;   // (label, srcPath)
     {
         QMutexLocker lock(&m_mutex);
-        for (const QString &p : localPaths)
-            m_queue.enqueue({ true, p, remoteDir,
-                              QStringLiteral("上传 %1").arg(QFileInfo(p).fileName()) });
+        for (const QString &p : localPaths) {
+            const QString label = QStringLiteral("上传 %1").arg(QFileInfo(p).fileName());
+            m_queue.enqueue({ true, p, remoteDir, label, false });
+            queued.append({ label, p });
+        }
     }
+    for (const auto &q : queued)
+        emit taskQueued(q.first, true, q.second, remoteDir);
     m_cond.wakeOne();
     if (!isRunning())
         start();
@@ -36,14 +41,18 @@ void TransferThread::enqueueUpload(const QStringList &localPaths, const QString 
 void TransferThread::enqueueDownload(const QStringList &remotePaths, const QString &localDir,
                                      bool openAfter)
 {
+    QVector<QPair<QString, QString>> queued;   // (label, srcPath)
     {
         QMutexLocker lock(&m_mutex);
         const QString verb = openAfter ? QStringLiteral("打开") : QStringLiteral("下载");
-        for (const QString &p : remotePaths)
-            m_queue.enqueue({ false, p, localDir,
-                              QStringLiteral("%1 %2").arg(verb, QFileInfo(p).fileName()),
-                              openAfter });
+        for (const QString &p : remotePaths) {
+            const QString label = QStringLiteral("%1 %2").arg(verb, QFileInfo(p).fileName());
+            m_queue.enqueue({ false, p, localDir, label, openAfter });
+            queued.append({ label, p });
+        }
     }
+    for (const auto &q : queued)
+        emit taskQueued(q.first, false, q.second, localDir);
     m_cond.wakeOne();
     if (!isRunning())
         start();
@@ -55,7 +64,10 @@ void TransferThread::disconnectRemote()
         QMutexLocker lock(&m_mutex);
         m_disconnectRequested = true;
         m_abortRequested = true;   // 断开连接时同时中断在途传输
-        m_queue.clear();
+        if (!m_queue.isEmpty()) {
+            m_queue.clear();
+            emit queueCleared();   // 通知 UI 移除“等待中”任务
+        }
     }
     m_cond.wakeAll();
 }
@@ -65,8 +77,22 @@ void TransferThread::abortTransfer()
     QMutexLocker lock(&m_mutex);
     m_abortRequested = true;
     m_paused = false;          // 暂停中也允许中断
-    m_queue.clear();
+    if (!m_queue.isEmpty()) {
+        m_queue.clear();
+        emit queueCleared();
+    }
     m_cond.wakeAll();
+}
+
+void TransferThread::cancelQueued(const QString &label)
+{
+    QMutexLocker lock(&m_mutex);
+    for (int i = m_queue.size() - 1; i >= 0; --i) {
+        if (m_queue.at(i).label == label) {
+            m_queue.removeAt(i);
+            emit taskCancelled(label);
+        }
+    }
 }
 
 bool TransferThread::abortRequested()

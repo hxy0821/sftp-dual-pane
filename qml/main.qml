@@ -20,9 +20,23 @@ ApplicationWindow {
     property bool connecting: false
     property string statusMsg: ""
     property color statusMsgColor: "#7b8494"
-    property string termStatusText: "未连接"
-    property string termStatusColor: "#8a93a0"
-    property int termInputStart: 0
+
+    // ---------- 传输队列（spec §13/§33） ----------
+    ListModel { id: transferListModel }
+    property bool transferPaused: false
+    property int activeCount: 0      // 队列 + 运行中 + 失败
+    property int doneCount: 0
+    property real upSpeed: 0
+    property real downSpeed: 0
+
+    function findTaskRow(label, statusList) {
+        for (var i = 0; i < transferListModel.count; i++) {
+            var it = transferListModel.get(i)
+            if (it.label === label && statusList.indexOf(it.status) >= 0)
+                return i
+        }
+        return -1
+    }
     // 当前表单实际载入的已保存连接名；为空表示表单是手动输入的新连接。
     // 下拉框的高亮始终跟随它，保证“看到的名字”和“表单里的值”一致
     property string loadedConnection: ""
@@ -93,16 +107,12 @@ ApplicationWindow {
 
     function doDisconnect() {
         connecting = false
+        transferPaused = false
         transfer.disconnectRemote()
         if (shell.running)
             shell.closeSession()
         browse.disconnect()
-        log("已断开连接")
-        // 断开连接会中断在途传输，进度条立即置红提示
-        if (progressArea.active && !progressArea.finished) {
-            progressArea.taskAborted()
-            log("✘ 连接已断开，传输已中断")
-        }
+        log("已断开连接，在途传输已中断")
     }
 
     function startTransfer(src, dst, paths) {
@@ -120,6 +130,45 @@ ApplicationWindow {
             transfer.enqueueDownload(paths, localModel.currentPath)
             log("↓ 开始下载 " + paths.length + " 项 → " + localModel.currentPath)
         }
+    }
+
+    // ---------- 传输队列操作 ----------
+    function retryTransfer(index) {
+        var it = transferListModel.get(index)
+        if (!it || it.status !== "failed")
+            return
+        transferListModel.remove(index)
+        if (activeCount > 0)
+            activeCount--
+        if (!browse.connected) {
+            log("✘ 未连接远程主机，无法重试")
+            return
+        }
+        transfer.host = browse.host
+        transfer.port = browse.port
+        transfer.user = browse.user
+        transfer.password = browse.password
+        if (it.upload)
+            transfer.enqueueUpload([it.srcPath], it.dstDir)
+        else
+            transfer.enqueueDownload([it.srcPath], it.dstDir)
+    }
+
+    function deleteTransfer(index) {
+        var it = transferListModel.get(index)
+        if (!it || it.status !== "cancelled")
+            return
+        transferListModel.remove(index)
+        if (activeCount > 0)
+            activeCount--
+    }
+
+    function clearFinishedTasks() {
+        for (var i = transferListModel.count - 1; i >= 0; i--) {
+            if (transferListModel.get(i).status === "done")
+                transferListModel.remove(i)
+        }
+        doneCount = 0
     }
 
     // ---------- 打开文件 ----------
@@ -162,7 +211,8 @@ ApplicationWindow {
             log("✘ 未连接远程主机，无法打开终端")
             return
         }
-        termPanel.visible = true
+        terminalPanel.visible = true
+        terminalPanel.collapsed = false
         if (!shell.running) {
             shell.host = browse.host
             shell.port = browse.port
@@ -170,79 +220,18 @@ ApplicationWindow {
             shell.password = browse.password
             shell.startSession()
         }
-        termOut.forceActiveFocus()
+        terminalPanel.focusTerminal()
     }
     function closeTerminal() {
         if (shell.running)
             shell.closeSession()
-        termPanel.visible = false
+        terminalPanel.visible = false
     }
     function toggleTerminal() {
-        if (termPanel.visible)
-            closeTerminal()
+        if (terminalPanel.visible && !terminalPanel.collapsed)
+            terminalPanel.collapsed = true   // 折叠不断开会话
         else
             openTerminal()
-    }
-
-    // 本地回显模型：远程已关闭回显（PTY ECHO=0），输入由可编辑的 TextArea
-    // 原生显示/退格；仅回车时整行提交。远程输出统一插入到“当前输入行”之前
-    // （termInputStart 处），把用户正在敲的内容推到末尾。
-    function appendTermOutput(t) {
-        var i = 0
-        while (i < t.length) {
-            var c = t.charCodeAt(i)
-            if (c === 8) { // \b：删除输出区最后一个字符
-                if (termInputStart > 0) {
-                    termOut.remove(termInputStart - 1, termInputStart)
-                    termInputStart--
-                }
-                i++
-            } else if (c === 13) { // \r
-                if (i + 1 < t.length && t.charCodeAt(i + 1) === 10) { // \r\n
-                    termOut.insert(termInputStart, "\n")
-                    termInputStart++
-                    i += 2
-                } else {
-                    i++ // 孤立的 \r：行重绘，忽略
-                }
-            } else if (c === 10) { // \n
-                termOut.insert(termInputStart, "\n")
-                termInputStart++
-                i++
-            } else {
-                var start = i
-                while (i < t.length) {
-                    var cc = t.charCodeAt(i)
-                    if (cc === 8 || cc === 13 || cc === 10)
-                        break
-                    i++
-                }
-                var s = t.substring(start, i)
-                termOut.insert(termInputStart, s)
-                termInputStart += s.length
-            }
-        }
-        if (termOut.length > 100000) {
-            var cut = termOut.length - 100000
-            termOut.remove(0, cut)
-            termInputStart -= cut
-            if (termInputStart < 0)
-                termInputStart = 0
-        }
-        termOut.cursorPosition = termOut.length
-    }
-
-    // 提交当前输入行（从 termInputStart 到末尾）给远程 shell。
-    function submitLine() {
-        if (!shell.running) {
-            log("✘ 终端未连接，无法执行命令")
-            return
-        }
-        var line = termOut.text.substring(termInputStart)
-        termOut.insert(termOut.length, "\n")
-        termInputStart = termOut.length
-        termOut.cursorPosition = termOut.length
-        shell.sendInput(line + "\r")
     }
 
     // ---------- 后端对象 ----------
@@ -259,12 +248,7 @@ ApplicationWindow {
         }
         onDisconnected: {
             connecting = false
-            if (progressArea.active && !progressArea.finished) {
-                progressArea.taskAborted()
-                log("✘ 连接已断开，传输已中断")
-            } else {
-                log("远程连接已断开")
-            }
+            log("远程连接已断开，在途传输已中断")
         }
         onStatResult: {
             if (!pendingBack || path !== pendingBack.remotePath)
@@ -285,35 +269,111 @@ ApplicationWindow {
 
     ShellSession {
         id: shell
-        onOutputReceived: {
-            appendTermOutput(text)
-        }
+        onOutputReceived: terminalPanel.appendOutput(text)
         onSessionStarted: {
-            termStatusText = "已连接"
-            termStatusColor = "#5fc178"
+            terminalPanel.setConnected()
             log("终端已连接")
-            // 新会话：清空终端并重置输入行起点
-            termOut.remove(0, termOut.length)
-            termInputStart = 0
         }
         onSessionClosed: {
-            termStatusText = "已断开"
-            termStatusColor = "#e06c6c"
+            terminalPanel.setClosed(reason)
             log("终端已关闭: " + reason)
         }
     }
 
     TransferThread {
         id: transfer
+        onTaskQueued: {
+            transferListModel.append({
+                label: label,
+                name: label.replace(/^(上传|下载|打开)\s*/, ""),
+                upload: upload,
+                srcPath: srcPath,
+                dstDir: dstDir,
+                size: 0, done: 0, speed: 0, eta: -1, lastTs: 0,
+                status: "queued"
+            })
+            activeCount++
+        }
+        onQueueCleared: {
+            for (var i = transferListModel.count - 1; i >= 0; i--) {
+                if (transferListModel.get(i).status === "queued")
+                    transferListModel.remove(i)
+            }
+            var n = 0
+            for (var j = 0; j < transferListModel.count; j++) {
+                if (transferListModel.get(j).status !== "done")
+                    n++
+            }
+            activeCount = n
+        }
+        onTaskCancelled: {
+            var i = findTaskRow(label, ["queued"])
+            if (i >= 0) {
+                transferListModel.remove(i)
+                if (activeCount > 0)
+                    activeCount--
+            }
+        }
         onTaskStarted: {
-            progressArea.beginTask(label, upload)
+            // 新任务开始：清除上一次遗留的暂停态（UI 与传输线程同步恢复）
+            if (transferPaused) {
+                transferPaused = false
+                transfer.resumeTransfer()
+            }
+            var i = findTaskRow(label, ["queued"])
+            if (i >= 0) {
+                transferListModel.setProperty(i, "status", "running")
+            } else {
+                transferListModel.append({
+                    label: label,
+                    name: label.replace(/^(上传|下载|打开)\s*/, ""),
+                    upload: upload,
+                    srcPath: "", dstDir: "",
+                    size: 0, done: 0, speed: 0, eta: -1, lastTs: 0,
+                    status: "running"
+                })
+                activeCount++
+            }
             log(label)
         }
-        onProgress: progressArea.setProgress(done, total)
+        onProgress: {
+            var i = findTaskRow(label, ["running"])
+            if (i < 0)
+                return
+            var it = transferListModel.get(i)
+            var now = Date.now()
+            var sp = it.speed
+            if (now - it.lastTs > 200 && done > it.done) {
+                var inst = (done - it.done) * 1000.0 / (now - it.lastTs)
+                sp = sp > 0 ? sp * 0.7 + inst * 0.3 : inst
+                transferListModel.setProperty(i, "lastTs", now)
+                var remaining = Math.max(0, total - done)
+                transferListModel.setProperty(i, "eta", sp > 0 ? remaining / sp : -1)
+                if (it.upload)
+                    upSpeed = sp
+                else
+                    downSpeed = sp
+            }
+            transferListModel.setProperty(i, "done", done)
+            if (total > 0)
+                transferListModel.setProperty(i, "size", total)
+            transferListModel.setProperty(i, "speed", sp)
+        }
         onTaskFinished: {
+            var i = findTaskRow(label, ["running", "queued"])
+            if (i >= 0) {
+                var cancelled = message.indexOf("已中断") >= 0
+                transferListModel.setProperty(i, "status",
+                                              ok ? "done" : (cancelled ? "cancelled" : "failed"))
+                transferListModel.setProperty(i, "speed", 0)
+                transferListModel.setProperty(i, "eta", -1)
+            }
+            upSpeed = 0
+            downSpeed = 0
             if (ok) {
-                progressArea.taskSucceeded()
-                log("✔ " + label + " — " + message)
+                if (activeCount > 0)
+                    activeCount--
+                doneCount++
                 // 回传任务成功：更新登记基线，继续处理其余待回传文件
                 if (uploadBackActive && pendingBack
                         && label === "上传 " + pendingBack.name) {
@@ -328,12 +388,8 @@ ApplicationWindow {
                     uploadBackActive = false
                     pendingBack = null
                 }
-                if (message.indexOf("已中断") >= 0)
-                    progressArea.taskAborted()
-                else
-                    progressArea.taskFailed()
-                log("✘ " + label + " — " + message)
             }
+            log((ok ? "✔ " : "✘ ") + label + " — " + message)
         }
         onTaskDone: {
             if (ok) {
@@ -566,178 +622,116 @@ ApplicationWindow {
         }
     }
 
-    // ---------- 底部：传输进度 + 终端 ----------
+    // ---------- 底部：传输队列 + 终端 并排 + 状态栏（spec §6/§20/§24） ----------
     footer: Item {
-        implicitHeight: footerCol.implicitHeight + footerCol.anchors.topMargin + footerCol.anchors.bottomMargin
+        readonly property int bottomH: Math.max(200, Math.min(300, Math.round(root.height * 0.28)))
+        implicitHeight: bottomH + 48
+
         ColumnLayout {
-            id: footerCol
+            id: bottomCol
             anchors.fill: parent
             anchors.margins: 8
-            spacing: 4
+            spacing: 6
 
             RowLayout {
+                id: bottomRow
                 Layout.fillWidth: true
+                Layout.fillHeight: true
                 spacing: 8
 
-                TransferProgress {
-                    id: progressArea
+                TransferPanel {
+                    id: transferPanel
                     Layout.fillWidth: true
-                    visible: active
-                    onTogglePause: {
-                        if (paused) {
-                            paused = false
+                    Layout.fillHeight: true
+                    model: transferListModel
+                    paused: root.transferPaused
+                    activeCount: root.activeCount
+                    doneCount: root.doneCount
+                    onPauseRequested: {
+                        if (transferPaused) {
+                            transferPaused = false
                             transfer.resumeTransfer()
                         } else {
-                            paused = true
+                            transferPaused = true
                             transfer.pauseTransfer()
                         }
                     }
-                    onAbortClicked: {
-                        progressArea.taskAborted()
+                    onAbortRequested: {
+                        transferPaused = false
                         transfer.abortTransfer()
                     }
+                    onCancelQueuedRequested: transfer.cancelQueued(label)
+                    onRetryRequested: retryTransfer(index)
+                    onDeleteRequested: deleteTransfer(index)
+                    onClearFinished: clearFinishedTasks()
                 }
-                Item { Layout.fillWidth: true; visible: !progressArea.visible }
 
-                UiButton {
-                    id: uploadBackButton
-                    visible: openRegistry.dirtyCount > 0
-                    text: "上传修改(" + openRegistry.dirtyCount + ")"
-                    onClicked: startUploadBack()
-                }
-                UiButton {
-                    text: termPanel.visible ? "关闭终端" : "终端"
-                    onClicked: toggleTerminal()
+                TerminalPanel {
+                    id: terminalPanel
+                    Layout.fillHeight: true
+                    Layout.preferredWidth: !visible ? 0
+                                           : collapsed ? 56 : Math.round(bottomRow.width * 0.34)
+                    visible: false
+                    onCloseRequested: closeTerminal()
+                    onCommandRequested: shell.sendInput(line)
                 }
             }
 
-            Label {
-                visible: statusMsg !== ""
-                text: statusMsg
-                color: statusMsgColor
-                font.pixelSize: 12
-                elide: Text.ElideRight
-                Layout.fillWidth: true
-            }
-
-            // 终端面板
+            // 状态栏
             Rectangle {
-                id: termPanel
-                visible: false
                 Layout.fillWidth: true
-                Layout.preferredHeight: 220
-                radius: 8
-                color: "#171b21"
+                implicitHeight: 26
+                radius: 6
+                color: "#ffffff"
                 border.width: 1
-                border.color: "#2c333d"
+                border.color: "#e3e7ee"
 
-                ColumnLayout {
+                RowLayout {
                     anchors.fill: parent
-                    anchors.margins: 8
-                    spacing: 4
+                    anchors.leftMargin: 10
+                    anchors.rightMargin: 10
+                    spacing: 8
 
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-                        Label {
-                            text: "终端"
-                            color: "#d9e1ea"
-                            font.bold: true
-                        }
-                        Rectangle {
-                            width: 8
-                            height: 8
-                            radius: 4
-                            color: termStatusColor
-                        }
-                        Label {
-                            text: termStatusText
-                            color: termStatusColor
-                        }
-                        Label {
-                            text: "· 直接敲键盘输入命令，回车执行"
-                            color: "#78828e"
-                            font.pixelSize: 11
-                        }
-                        Item { Layout.fillWidth: true }
-                        UiTool { dark: true; text: "清空"; onClicked: { termOut.remove(0, termOut.length); termInputStart = 0 } }
-                        UiTool { dark: true; text: "关闭"; onClicked: closeTerminal() }
+                    Rectangle {
+                        Layout.preferredWidth: 8
+                        Layout.preferredHeight: 8
+                        radius: 4
+                        color: browse.connected ? "#2fa356" : "#9aa3b0"
                     }
-
-                    TextArea {
-                        id: termOut
+                    Label {
+                        text: browse.connected
+                              ? "已连接 " + browse.host + (browse.user.length ? " (" + browse.user + ")" : "")
+                              : "未连接"
+                        color: "#3a414a"
+                        font.pixelSize: 12
+                    }
+                    Label {
+                        visible: statusMsg !== ""
+                        text: statusMsg
+                        color: statusMsgColor
+                        font.pixelSize: 12
+                        elide: Text.ElideRight
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        readOnly: !shell.running
-                        selectByMouse: true
-                        wrapMode: TextArea.NoWrap
-                        color: "#c9d3df"
-                        background: Rectangle {
-                            radius: 6
-                            color: "#101419"
-                        }
-                        font.family: "monospace"
-                        font.pixelSize: 13
-                        onTextChanged: cursorPosition = length
-
-                        // 本地回显模型：可打印字符由 TextArea 原生插入（本地回显），
-                        // 回车时整行提交；退格由 TextArea 原生处理，但禁止越过
-                        // 输入行起点（termInputStart），避免删掉提示符/历史输出。
-                        Keys.onPressed: {
-                            if (!shell.running) {
-                                event.accepted = true
-                                return
-                            }
-                            var ctrl = (event.modifiers & Qt.ControlModifier) !== 0
-                            if ((event.modifiers & Qt.AltModifier) !== 0) {
-                                event.accepted = true
-                                return
-                            }
-                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                                event.accepted = true
-                                submitLine()
-                            } else if (event.key === Qt.Key_Backspace) {
-                                // 仅当输入行为空（光标在起点）时阻止，否则交 TextArea 原生删除
-                                if (termOut.cursorPosition <= termInputStart) {
-                                    event.accepted = true
-                                }
-                            } else if (event.key === Qt.Key_Left || event.key === Qt.Key_Right ||
-                                       event.key === Qt.Key_Home || event.key === Qt.Key_End ||
-                                       event.key === Qt.Key_Up || event.key === Qt.Key_Down ||
-                                       event.key === Qt.Key_Delete || event.key === Qt.Key_Tab) {
-                                // 简化模型：固定行尾编辑，禁用方向/删除/制表符
-                                event.accepted = true
-                            } else if (ctrl && event.key === Qt.Key_C) {
-                                event.accepted = true
-                                shell.sendInput("\x03")
-                            } else if (ctrl && event.key === Qt.Key_D) {
-                                event.accepted = true
-                                shell.sendInput("\x04")
-                            } else if (ctrl && event.key === Qt.Key_Z) {
-                                event.accepted = true
-                                shell.sendInput("\x1a")
-                            } else if (ctrl && event.key === Qt.Key_L) {
-                                event.accepted = true
-                                shell.sendInput("\x0c")
-                            }
-                            // 其它可打印字符：不拦截，由 TextArea 原生插入（本地回显）
-                        }
+                    }
+                    Item { Layout.fillWidth: true; visible: statusMsg === "" }
+                    UiButton {
+                        visible: openRegistry.dirtyCount > 0
+                        text: "上传修改(" + openRegistry.dirtyCount + ")"
+                        onClicked: startUploadBack()
+                    }
+                    Label {
+                        text: activeCount > 0
+                              ? activeCount + " 个传输任务 · 上传 " + Utils.formatBytes(upSpeed) + "/s · 下载 " + Utils.formatBytes(downSpeed) + "/s"
+                              : "空闲"
+                        color: "#7b8494"
+                        font.pixelSize: 12
                     }
                 }
             }
         }
     }
 
-    // 监视到本地副本被编辑时提醒（状态行橙色提示）
-    Connections {
-        target: openRegistry
-        onFileModified: {
-            var name = remotePath.split("/").pop()
-            log("⚠ " + name + " 已在本地修改，可点击“上传修改”回传远程")
-        }
-    }
-
-    // ---------- 回传冲突确认 ----------
+    // ---------- 回传冲突确认 ----------    // ---------- 回传冲突确认 ----------
     Dialog {
         id: backConflictDialog
         modal: true

@@ -8,6 +8,9 @@
         <file>qml/UiCombo.qml</file>
         <file>qml/UiCheck.qml</file>
         <file>qml/TransferProgress.qml</file>
+        <file>qml/TransferItem.qml</file>
+        <file>qml/TransferPanel.qml</file>
+        <file>qml/TerminalPanel.qml</file>
         <file>qml/utils.js</file>
     </qresource>
 </RCC>

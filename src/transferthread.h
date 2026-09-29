@@ -48,8 +48,12 @@ public:
     Q_INVOKABLE void pauseTransfer();
     Q_INVOKABLE void resumeTransfer();
     Q_INVOKABLE void abortTransfer();
+    Q_INVOKABLE void cancelQueued(const QString &label);   // 仅移除队列中等待的同名任务
 
 signals:
+    void taskQueued(const QString &label, bool upload, const QString &srcPath, const QString &dstDir);
+    void queueCleared();
+    void taskCancelled(const QString &label);
     void taskStarted(const QString &label, bool upload);
     void progress(const QString &label, qint64 done, qint64 total);
     void taskFinished(const QString &label, bool ok, const QString &message);
