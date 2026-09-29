@@ -23,6 +23,7 @@ public:
     Q_INVOKABLE QString lastConnection() const;
     Q_INVOKABLE void setLastConnection(const QString &name);
     Q_INVOKABLE QString homeDir() const;
+    Q_INVOKABLE bool openPath(const QString &path);
 
 private:
     explicit SettingsStore(QObject *parent = nullptr);

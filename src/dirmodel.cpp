@@ -225,6 +225,13 @@ bool DirModel::isDirAt(int row) const
     return m_entries.at(row).isDir;
 }
 
+qint64 DirModel::sizeAt(int row) const
+{
+    if (row < 0 || row >= m_entries.size())
+        return 0;
+    return m_entries.at(row).size;
+}
+
 bool DirModel::makeDir(const QString &name)
 {
     const QString n = name.trimmed();

@@ -4,7 +4,7 @@
 set -euo pipefail
 
 PKG="sftp-dual-pane"
-VER="1.0.2"
+VER="1.0.3"
 ARCH="amd64"
 MAINT="selftools <selftools@localhost>"
 

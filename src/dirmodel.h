@@ -55,6 +55,7 @@ public:
     Q_INVOKABLE QString pathAt(int row) const;
     Q_INVOKABLE QString nameAt(int row) const;
     Q_INVOKABLE bool isDirAt(int row) const;
+    Q_INVOKABLE qint64 sizeAt(int row) const;
     Q_INVOKABLE bool makeDir(const QString &name);
     Q_INVOKABLE bool makeFile(const QString &name);
     Q_INVOKABLE bool removeAt(int row);

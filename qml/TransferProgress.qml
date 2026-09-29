@@ -23,7 +23,7 @@ RowLayout {
 
     function beginTask(label, upload) {
         hideTimer.stop()
-        name = label.replace(/^(上传|下载)\s*/, "")
+        name = label.replace(/^(上传|下载|打开)\s*/, "")
         uploading = upload
         progress = 0
         paused = false

@@ -16,6 +16,7 @@ Rectangle {
     property string ghostText: ""
 
     signal dropToPeer(var paths)
+    signal openFile(int index)   // 双击/菜单打开文件（本地直接打开，远程先下载到缓存）
 
     z: pane.dragActive ? 50 : 0
     color: "#ffffff"
@@ -253,8 +254,12 @@ Rectangle {
                     }
 
                     onDoubleClicked: {
-                        if (mouse.button === Qt.LeftButton && model.isDir)
+                        if (mouse.button !== Qt.LeftButton)
+                            return
+                        if (model.isDir)
                             pane.model.enter(index)
+                        else
+                            pane.openFile(index)
                     }
 
                     onClicked: {
@@ -343,8 +348,13 @@ Rectangle {
         }
         MenuItem {
             text: "打开"
-            enabled: ctxMenu.row >= 0 && pane.model.isDirAt(ctxMenu.row)
-            onTriggered: pane.model.enter(ctxMenu.row)
+            enabled: ctxMenu.row >= 0
+            onTriggered: {
+                if (pane.model.isDirAt(ctxMenu.row))
+                    pane.model.enter(ctxMenu.row)
+                else
+                    pane.openFile(ctxMenu.row)
+            }
         }
         MenuSeparator { }
         MenuItem {

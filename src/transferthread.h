@@ -15,6 +15,7 @@ struct TransferTask {
     QString srcPath;      // 源路径（单个文件或目录）
     QString dstDir;       // 目标目录
     QString label;        // 显示名
+    bool openAfter = false; // 下载完成后用本地默认应用打开（“打开”功能）
 };
 
 // 后台传输线程：常驻运行，队列消费，自动建立/复用一条 SSH 连接。
@@ -40,7 +41,9 @@ public:
     void setPassword(const QString &p) { QMutexLocker l(&m_mutex); m_password = p; }
 
     Q_INVOKABLE void enqueueUpload(const QStringList &localPaths, const QString &remoteDir);
-    Q_INVOKABLE void enqueueDownload(const QStringList &remotePaths, const QString &localDir);
+    // openAfter: 下载完成后 emit openReady，由 QML 调本地应用打开
+    Q_INVOKABLE void enqueueDownload(const QStringList &remotePaths, const QString &localDir,
+                                     bool openAfter = false);
     Q_INVOKABLE void disconnectRemote();
     Q_INVOKABLE void pauseTransfer();
     Q_INVOKABLE void resumeTransfer();
@@ -52,6 +55,7 @@ signals:
     void taskFinished(const QString &label, bool ok, const QString &message);
     void taskDone(bool upload, bool ok);
     void allFinished();
+    void openReady(const QString &localPath, bool ok, const QString &err);
 
 protected:
     void run() override;

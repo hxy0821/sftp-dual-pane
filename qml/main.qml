@@ -120,6 +120,40 @@ ApplicationWindow {
         }
     }
 
+    // ---------- 打开文件 ----------
+    function openLocalPath(path) {
+        if (!settingsStore.openPath(path))
+            log("✘ 无法打开 " + path)
+    }
+
+    // 远程文件：下载到本地缓存目录后用默认应用打开（单向预览，不回传）
+    function openRemotePath(model, index) {
+        if (!browse.connected) {
+            log("✘ 未连接远程主机，无法打开远程文件")
+            return
+        }
+        var size = model.sizeAt(index)
+        if (size > 100 * 1024 * 1024) {
+            log("✘ 文件超过 100MB，不支持直接打开，请下载后查看")
+            return
+        }
+        var p = model.pathAt(index)
+        var rel = p.replace(/^\/+/, "")
+        if (rel.length === 0 || rel.indexOf("..") >= 0) {
+            log("✘ 路径无法用于本地缓存: " + p)
+            return
+        }
+        var base = settingsStore.homeDir() + "/.cache/sftp-dual-pane/open"
+        var slash = rel.lastIndexOf("/")
+        var dir = slash > 0 ? base + "/" + rel.substring(0, slash) : base
+        // 传输线程持有独立连接，打开前必须同步连接凭据（否则“主机地址为空”）
+        transfer.host = browse.host
+        transfer.port = browse.port
+        transfer.user = browse.user
+        transfer.password = browse.password
+        transfer.enqueueDownload([p], dir, true)
+    }
+
     // ---------- 终端 ----------
     function openTerminal() {
         if (!browse.connected) {
@@ -279,6 +313,16 @@ ApplicationWindow {
                     localModel.refresh()
             }
         }
+        onOpenReady: {
+            if (!ok) {
+                log("✘ 打开失败: " + err)
+                return
+            }
+            if (settingsStore.openPath(localPath))
+                log("✔ 已用本地应用打开 " + localPath)
+            else
+                log("✘ 无法打开 " + localPath)
+        }
     }
 
     DirModel {
@@ -428,6 +472,7 @@ ApplicationWindow {
                 title: "本机 (Local)"
                 peerPane: remotePane
                 onDropToPeer: startTransfer("local", "remote", paths)
+                onOpenFile: openLocalPath(localPane.model.pathAt(index))
             }
 
             Rectangle { Layout.fillHeight: true; width: 1; color: "#d8dbe0" }
@@ -442,6 +487,7 @@ ApplicationWindow {
                 peerPane: localPane
                 remoteReady: browse.connected
                 onDropToPeer: startTransfer("remote", "local", paths)
+                onOpenFile: openRemotePath(remotePane.model, index)
             }
         }
     }

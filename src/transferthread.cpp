@@ -33,13 +33,16 @@ void TransferThread::enqueueUpload(const QStringList &localPaths, const QString 
         start();
 }
 
-void TransferThread::enqueueDownload(const QStringList &remotePaths, const QString &localDir)
+void TransferThread::enqueueDownload(const QStringList &remotePaths, const QString &localDir,
+                                     bool openAfter)
 {
     {
         QMutexLocker lock(&m_mutex);
+        const QString verb = openAfter ? QStringLiteral("打开") : QStringLiteral("下载");
         for (const QString &p : remotePaths)
             m_queue.enqueue({ false, p, localDir,
-                              QStringLiteral("下载 %1").arg(QFileInfo(p).fileName()) });
+                              QStringLiteral("%1 %2").arg(verb, QFileInfo(p).fileName()),
+                              openAfter });
     }
     m_cond.wakeOne();
     if (!isRunning())
@@ -158,6 +161,10 @@ void TransferThread::runTask(const TransferTask &t, SftpClient &client)
     QVector<PlanItem> plan;
     qint64 total = 0;
 
+    // “打开”任务会把文件下到较深的缓存目录，先确保目标目录存在
+    if (!t.upload)
+        QDir().mkpath(t.dstDir);
+
     if (t.upload)
         collectLocalPlan(t.srcPath, t.dstDir, plan, total);
     else
@@ -225,6 +232,16 @@ void TransferThread::runTask(const TransferTask &t, SftpClient &client)
 
     emit taskFinished(t.label, true, QStringLiteral("%1 个文件，共 %2 字节").arg(files).arg(done));
     emit taskDone(t.upload, true);
+
+    // “打开”任务：下载完成后通知 QML 调本地应用
+    if (t.openAfter) {
+        for (const PlanItem &p : plan) {
+            if (!p.isDir) {
+                emit openReady(p.local, true, QString());
+                return;
+            }
+        }
+    }
 }
 
 void TransferThread::collectLocalPlan(const QString &localPath, const QString &remoteDir,

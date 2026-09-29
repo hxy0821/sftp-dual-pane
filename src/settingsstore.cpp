@@ -5,6 +5,9 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QDir>
+#include <QFileInfo>
+#include <QDesktopServices>
+#include <QUrl>
 
 SettingsStore *SettingsStore::instance()
 {
@@ -114,4 +117,12 @@ void SettingsStore::setLastConnection(const QString &name)
 QString SettingsStore::homeDir() const
 {
     return QDir::homePath();
+}
+
+// 用系统默认应用打开本地文件（远程文件先下载到缓存再调用此接口）
+bool SettingsStore::openPath(const QString &path)
+{
+    if (path.isEmpty() || !QFileInfo::exists(path))
+        return false;
+    return QDesktopServices::openUrl(QUrl::fromLocalFile(path));
 }
