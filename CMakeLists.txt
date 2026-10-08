@@ -25,6 +25,7 @@ add_executable(sftp-dual-pane
     src/dirmodel.cpp
     src/browsethread.cpp
     src/shellsession.cpp
+    src/terminalview.cpp
     src/transferthread.cpp
     src/settingsstore.cpp
     src/openregistry.cpp

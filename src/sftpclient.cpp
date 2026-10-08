@@ -200,19 +200,12 @@ bool SftpClient::openShell(int cols, int rows, QString &err)
         return false;
     }
 
-    // 分配 PTY 时关闭回显（ECHO=0）：终端采用“本地回显 + 回车整行提交”
-    // 模型，输入由本地 TextArea 显示，避免 readline 的退格/光标重绘序列
-    // 造成乱码。RFC 4254 §8 终端模式编码：1 字节 opcode + 4 字节大端
-    // uint32 值，以 TTY_OP_END(0) 结束；ECHO 的 opcode 为 53。
-    static const char kPtyModes[] = {
-        (char)53,          // ECHO
-        0, 0, 0, 0,        // value = 0（关闭）
-        (char)0            // TTY_OP_END
-    };
+    // 分配 PTY：终端模式用服务端默认值（远端回显打开），由 TerminalView
+    // 承担真实终端职责，readline 的回显/退格/光标重绘均可正确呈现。
     const char term[] = "xterm-256color";
     if (libssh2_channel_request_pty_ex(m_channel, term,
                                        (unsigned int)(sizeof(term) - 1),
-                                       kPtyModes, (unsigned int)sizeof(kPtyModes),
+                                       nullptr, 0,
                                        cols, rows, 0, 0) != 0) {
         err = lastError(QStringLiteral("请求 PTY 失败"));
         closeShell();

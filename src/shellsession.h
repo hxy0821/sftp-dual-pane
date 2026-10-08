@@ -8,7 +8,7 @@
 #include <atomic>
 
 // 交互式 SSH 终端会话：后台线程维护一条 shell 通道，持续读取输出、
-// 发送输入。输出经过去 ANSI 后以 UTF-8 文本增量下发到 UI。
+// 发送输入。输出以原始字节下发到 UI（由 TerminalView 解析 ANSI 控制序列）。
 class ShellSession : public QThread
 {
     Q_OBJECT
@@ -34,12 +34,14 @@ public:
 
     // 从 UI 线程调用（线程安全入队）。
     Q_INVOKABLE void startSession();
-    Q_INVOKABLE void sendInput(const QString &text);
     Q_INVOKABLE void resizeTerminal(int cols, int rows);
     Q_INVOKABLE void closeSession();
 
+public slots:
+    void sendInputBytes(const QByteArray &data);   // TerminalView 键盘输入（原始字节）
+
 signals:
-    void outputReceived(const QString &text);
+    void outputReceived(const QByteArray &data);
     void sessionStarted();
     void sessionClosed(const QString &reason);
     void runningChanged();

@@ -5,73 +5,6 @@
 #include <QElapsedTimer>
 #include <unistd.h>
 
-// 去掉常见的 ANSI 转义序列（颜色、光标移动等），保留文本。
-// 状态机按字节处理，未识别完的序列留到下一批数据。
-static QByteArray &stripAnsiState(QByteArray &pending, const QByteArray &in, QByteArray &out)
-{
-    pending += in;
-    out.clear();
-    out.reserve(pending.size());
-
-    int i = 0;
-    const int n = pending.size();
-    while (i < n) {
-        const unsigned char c = (unsigned char)pending.at(i);
-        if (c == 0x1b) { // ESC
-            // 需要至少一个后续字节才能判断
-            if (i + 1 >= n)
-                break;
-            const unsigned char c2 = (unsigned char)pending.at(i + 1);
-            if (c2 == '[') { // CSI
-                int j = i + 2;
-                bool done = false;
-                while (j < n) {
-                    const unsigned char d = (unsigned char)pending.at(j);
-                    if (d >= 0x40 && d <= 0x7e) { // 终止字节
-                        j++;
-                        done = true;
-                        break;
-                    }
-                    j++;
-                }
-                if (!done)
-                    break; // 序列未结束，等下批
-                i = j;
-                continue;
-            }
-            if (c2 == ']') { // OSC，直到 BEL 或 ESC 反斜杠
-                int j = i + 2;
-                bool done = false;
-                while (j < n) {
-                    const unsigned char d = (unsigned char)pending.at(j);
-                    if (d == 0x07) { // BEL
-                        j++;
-                        done = true;
-                        break;
-                    }
-                    if (d == 0x1b && j + 1 < n && pending.at(j + 1) == '\\') {
-                        j += 2;
-                        done = true;
-                        break;
-                    }
-                    j++;
-                }
-                if (!done)
-                    break;
-                i = j;
-                continue;
-            }
-            // 其它两字节转义（如 ESC ( B）
-            i += 2;
-            continue;
-        }
-        out.append((char)c);
-        i++;
-    }
-    pending.remove(0, i);
-    return out;
-}
-
 ShellSession::ShellSession(QObject *parent) : QThread(parent) {}
 
 ShellSession::~ShellSession()
@@ -99,12 +32,12 @@ void ShellSession::startSession()
     start();
 }
 
-void ShellSession::sendInput(const QString &text)
+void ShellSession::sendInputBytes(const QByteArray &data)
 {
-    if (text.isEmpty())
+    if (data.isEmpty())
         return;
     QMutexLocker l(&m_mutex);
-    m_input.enqueue(text.toUtf8());
+    m_input.enqueue(data);
 }
 
 void ShellSession::resizeTerminal(int cols, int rows)
@@ -158,8 +91,6 @@ void ShellSession::run()
     emit sessionStarted();
 
     char buf[4096];
-    QByteArray pending;
-    QByteArray clean;
     QByteArray toWrite;
     int writeOff = 0;
     int idleLoops = 0;
@@ -179,9 +110,7 @@ void ShellSession::run()
             const int r = client.readShell(buf, sizeof(buf));
             if (r > 0) {
                 gotData = true;
-                stripAnsiState(pending, QByteArray(buf, r), clean);
-                if (!clean.isEmpty())
-                    emit outputReceived(QString::fromUtf8(clean));
+                emit outputReceived(QByteArray(buf, r));
                 continue;
             }
             if (r == 0)

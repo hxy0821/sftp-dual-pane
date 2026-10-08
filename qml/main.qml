@@ -317,7 +317,7 @@ ApplicationWindow {
 
     ShellSession {
         id: shell
-        onOutputReceived: terminalPanel.appendOutput(text)
+        objectName: "shell"
         onSessionStarted: {
             terminalPanel.setConnected()
             log("终端已连接")
@@ -952,7 +952,6 @@ ApplicationWindow {
                 Layout.fillHeight: true
                 visible: bottomPage === 1
                 onCloseRequested: closeTerminal()
-                onCommandRequested: shell.sendInput(line)
             }
 
             // 状态栏
