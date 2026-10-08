@@ -27,6 +27,7 @@ ApplicationWindow {
     property bool transferPaused: false
     property int activeCount: 0      // 队列 + 运行中 + 失败
     property int doneCount: 0
+    property int deadCount: 0        // 队列里已结束的记录（失败 / 已中断），可一键清空
     property real upSpeed: 0
     property real downSpeed: 0
 
@@ -146,6 +147,7 @@ ApplicationWindow {
         transferListModel.remove(index)
         if (activeCount > 0)
             activeCount--
+        refreshDeadCount()
         transfer.host = browse.host
         transfer.port = browse.port
         transfer.user = browse.user
@@ -156,13 +158,15 @@ ApplicationWindow {
             transfer.enqueueDownload([it.srcPath], it.dstDir)
     }
 
+    // 删除队列里的结束记录（失败 / 已中断）
     function deleteTransfer(index) {
         var it = transferListModel.get(index)
-        if (!it || it.status !== "cancelled")
+        if (!it || (it.status !== "failed" && it.status !== "cancelled"))
             return
         transferListModel.remove(index)
         if (activeCount > 0)
             activeCount--
+        refreshDeadCount()
     }
 
     // 取消单个任务：按 id 精确定位，只影响这一行（运行中中断，等待中移出队列）
@@ -181,6 +185,30 @@ ApplicationWindow {
                 transferListModel.remove(i)
         }
         doneCount = 0
+    }
+
+    // 队列中的失败 / 已中断记录数（决定「清空记录」按钮是否出现）
+    function refreshDeadCount() {
+        var n = 0
+        for (var i = 0; i < transferListModel.count; i++) {
+            var s = transferListModel.get(i).status
+            if (s === "failed" || s === "cancelled")
+                n++
+        }
+        deadCount = n
+    }
+
+    // 清空队列中的失败 / 已中断记录；运行中、等待中的任务不受影响
+    function clearDeadRecords() {
+        for (var i = transferListModel.count - 1; i >= 0; i--) {
+            var s = transferListModel.get(i).status
+            if (s === "failed" || s === "cancelled") {
+                transferListModel.remove(i)
+                if (activeCount > 0)
+                    activeCount--
+            }
+        }
+        deadCount = 0
     }
 
     // ---------- 打开文件 ----------
@@ -392,6 +420,7 @@ ApplicationWindow {
                                               ok ? "done" : (cancelled ? "cancelled" : "failed"))
                 transferListModel.setProperty(i, "speed", 0)
                 transferListModel.setProperty(i, "eta", -1)
+                refreshDeadCount()
             }
             upSpeed = 0
             downSpeed = 0
@@ -635,7 +664,10 @@ ApplicationWindow {
                 width: parent.width
                 height: 38
                 radius: 6
-                color: navMa4.containsMouse ? "#f2f6fc" : "transparent"
+                // 悬停或菜单已展开都视为选中态，图标/文字/底色保持一致
+                readonly property bool active: navMa4.containsMouse || connMenu.visible
+                onActiveChanged: settingsIco.requestPaint()
+                color: connMenu.visible ? "#e9f0ff" : (navMa4.containsMouse ? "#f2f6fc" : "transparent")
                 Row {
                     anchors.fill: parent
                     anchors.leftMargin: 12
@@ -648,18 +680,18 @@ ApplicationWindow {
                             var ctx = getContext("2d")
                             ctx.reset()
                             Utils.drawIcon(ctx, "sliders", width, height,
-                                           navMa4.containsMouse ? "#3a7afe" : "#5a6472")
+                                           navSettings.active ? "#3a7afe" : "#5a6472")
                         }
                         Component.onCompleted: requestPaint()
                     }
                     Label { anchors.verticalCenter: parent.verticalCenter
-                            text: "设置"; color: "#3a414a" }
+                            text: "设置"; color: navSettings.active ? "#1d5fd6" : "#3a414a"
+                            font.bold: navSettings.active }
                 }
                 MouseArea {
                     id: navMa4
                     anchors.fill: parent
                     hoverEnabled: true
-                    onContainsMouseChanged: settingsIco.requestPaint()
                     onClicked: connMenu.popup(navSettings, navSettings.width + 4, -2)
                 }
             }
@@ -896,6 +928,7 @@ ApplicationWindow {
                 paused: root.transferPaused
                 activeCount: root.activeCount
                 doneCount: root.doneCount
+                deadCount: root.deadCount
                 onPauseRequested: {
                     if (transferPaused) {
                         transferPaused = false
@@ -909,6 +942,7 @@ ApplicationWindow {
                 onRetryRequested: retryTransfer(index)
                 onDeleteRequested: deleteTransfer(index)
                 onClearFinished: clearFinishedTasks()
+                onClearDead: clearDeadRecords()
                 onUploadBackClicked: startUploadBack()
             }
 

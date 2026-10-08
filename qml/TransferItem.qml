@@ -230,7 +230,7 @@ Item {
                     onClicked: row.retryClicked()
                 }
                 UiTool {
-                    visible: status === "cancelled"
+                    visible: status === "failed" || status === "cancelled"
                     text: "删除"
                     onClicked: row.deleteClicked()
                 }

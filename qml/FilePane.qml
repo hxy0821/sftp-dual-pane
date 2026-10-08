@@ -198,9 +198,9 @@ Item {
                 radius: 6
                 color: {
                     if (listView.currentIndex === index)
-                        return "#e9f0ff"
+                        return "#d5e4ff"
                     if (pane.multiSet.indexOf(index) >= 0)
-                        return "#f0f5ff"
+                        return "#e3edff"
                     if (ma.containsMouse)
                         return "#f3f6fb"
                     return index % 2 === 0 ? "#ffffff" : "#fafbfd"

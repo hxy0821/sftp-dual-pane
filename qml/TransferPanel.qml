@@ -12,12 +12,14 @@ Item {
     property bool paused: false
     property int activeCount: 0
     property int doneCount: 0
+    property int deadCount: 0    // 队列里已结束的记录（失败 / 已中断）
 
     signal pauseRequested()
     signal cancelRequested(int taskId)
     signal retryRequested(int index)
     signal deleteRequested(int index)
     signal clearFinished()
+    signal clearDead()
     signal uploadBackClicked()
 
     property int currentTab: 0   // 0=传输队列 1=已完成
@@ -101,10 +103,11 @@ Item {
                 text: "上传修改(" + openRegistry.dirtyCount + ")"
                 onClicked: panel.uploadBackClicked()
             }
+            // 清空记录：队列页清失败/已中断，已完成页清完成记录
             UiTool {
-                visible: panel.currentTab === 1 && panel.doneCount > 0
+                visible: panel.currentTab === 1 ? panel.doneCount > 0 : panel.deadCount > 0
                 text: "清空记录"
-                onClicked: panel.clearFinished()
+                onClicked: panel.currentTab === 1 ? panel.clearFinished() : panel.clearDead()
             }
         }
 
