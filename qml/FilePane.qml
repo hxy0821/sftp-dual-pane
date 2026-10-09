@@ -13,6 +13,7 @@ Item {
     property bool remoteReady: false       // 远程面板：是否已连接
     property bool dragActive: false
     property var multiSet: []
+    property int selAnchor: -1             // Shift 范围选择的锚点行
     property string ghostText: ""
 
     signal dropToPeer(var paths)
@@ -59,6 +60,64 @@ Item {
             out.push(pane.model.pathAt(listView.currentIndex))
         }
         return out
+    }
+
+    // 点击空白/按 Esc：取消所有选中与高亮
+    function clearSelection() {
+        pane.multiSet = []
+        pane.selAnchor = -1
+        listView.currentIndex = -1
+    }
+    // 只选一项（普通点击、无修饰方向键）
+    function selectOnly(i) {
+        pane.multiSet = []
+        pane.selAnchor = i
+        listView.currentIndex = i
+    }
+    // 从锚点到目标的范围选择（Shift+点击、Shift+方向键）
+    function selectRange(toIndex) {
+        var from = pane.selAnchor
+        if (from < 0)
+            from = listView.currentIndex
+        if (from < 0) {
+            pane.selectOnly(toIndex)
+            return
+        }
+        var lo = Math.min(from, toIndex)
+        var hi = Math.max(from, toIndex)
+        var arr = []
+        for (var i = lo; i <= hi; i++)
+            arr.push(i)
+        pane.multiSet = arr
+        listView.currentIndex = toIndex
+    }
+    // 键盘导航统一入口：mode 0=单选 1=Shift 范围 2=Ctrl 仅移动当前项
+    function navTo(index, mode) {
+        var n = listView.count
+        if (n <= 0) {
+            listView.currentIndex = -1
+            return
+        }
+        var i = Math.max(0, Math.min(n - 1, index))
+        if (mode === 1)
+            pane.selectRange(i)
+        else if (mode === 2)
+            listView.currentIndex = i
+        else
+            pane.selectOnly(i)
+        listView.positionViewAtIndex(i, ListView.Contain)
+    }
+    // Ctrl+A 全选
+    function selectAllItems() {
+        var n = listView.count
+        if (n <= 0)
+            return
+        var arr = []
+        for (var i = 0; i < n; i++)
+            arr.push(i)
+        pane.multiSet = arr
+        if (listView.currentIndex < 0)
+            listView.currentIndex = 0
     }
 
     ColumnLayout {
@@ -167,6 +226,86 @@ Item {
             clip: true
             model: pane.model
             boundsBehavior: Flickable.StopAtBounds
+
+            // 文件列表键盘操作（列表获得焦点时生效；输入框/对话框获得焦点时不受影响）
+            Keys.onPressed: {
+                var n = listView.count
+                var cur = listView.currentIndex
+                var ctrl = (event.modifiers & Qt.ControlModifier) !== 0
+                var shift = (event.modifiers & Qt.ShiftModifier) !== 0
+                var mode = shift ? 1 : (ctrl ? 2 : 0)
+                var page = Math.max(1, Math.floor(listView.height / 32) - 1)
+
+                switch (event.key) {
+                case Qt.Key_Up:
+                    pane.navTo(cur < 0 ? n - 1 : cur - 1, mode)
+                    event.accepted = true
+                    break
+                case Qt.Key_Down:
+                    pane.navTo(cur < 0 ? 0 : cur + 1, mode)
+                    event.accepted = true
+                    break
+                case Qt.Key_Home:
+                    pane.navTo(0, mode)
+                    event.accepted = true
+                    break
+                case Qt.Key_End:
+                    pane.navTo(n - 1, mode)
+                    event.accepted = true
+                    break
+                case Qt.Key_PageUp:
+                    pane.navTo(cur < 0 ? 0 : cur - page, mode)
+                    event.accepted = true
+                    break
+                case Qt.Key_PageDown:
+                    pane.navTo(cur < 0 ? 0 : cur + page, mode)
+                    event.accepted = true
+                    break
+                case Qt.Key_Return:
+                case Qt.Key_Enter:
+                    if (cur >= 0) {
+                        if (pane.model.isDirAt(cur))
+                            pane.model.enter(cur)
+                        else
+                            pane.openFile(cur)
+                    }
+                    event.accepted = true
+                    break
+                case Qt.Key_Backspace:
+                    if (pane.model)
+                        pane.model.goUp()
+                    event.accepted = true
+                    break
+                case Qt.Key_F2:
+                    if (cur >= 0)
+                        renameDialog.openFor(cur)
+                    event.accepted = true
+                    break
+                case Qt.Key_Delete:
+                    if (cur >= 0)
+                        confirmDelete.openFor(cur)
+                    event.accepted = true
+                    break
+                case Qt.Key_F5:
+                    if (pane.model)
+                        pane.model.refresh()
+                    event.accepted = true
+                    break
+                case Qt.Key_Escape:
+                    pane.clearSelection()
+                    event.accepted = true
+                    break
+                case Qt.Key_A:
+                    if (ctrl && shift)
+                        pane.clearSelection()
+                    else if (ctrl)
+                        pane.selectAllItems()
+                    else
+                        break
+                    event.accepted = true
+                    break
+                }
+            }
             ScrollBar.vertical: ScrollBar {
                 id: vbar
                 contentItem: Rectangle {
@@ -181,9 +320,13 @@ Item {
                 id: emptyArea
                 anchors.fill: parent
                 z: -1
-                acceptedButtons: Qt.RightButton
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
                 onClicked: {
-                    if (mouse.button === Qt.RightButton) {
+                    if (mouse.button === Qt.LeftButton) {
+                        // 点击空白：取消选中，列表接住后续键盘操作（拖拽仍可滚动列表）
+                        pane.clearSelection()
+                        listView.forceActiveFocus()
+                    } else {
                         var cp = pane.mapFromItem(listView, mouse.x, mouse.y)
                         emptyMenu.x = cp.x
                         emptyMenu.y = cp.y
@@ -289,14 +432,17 @@ Item {
                     onPressed: {
                         if (mouse.button === Qt.RightButton)
                             return
+                        listView.forceActiveFocus()
                         startX = mouse.x
                         startY = mouse.y
                         isDragging = false
-                        if (mouse.modifiers & Qt.ControlModifier) {
+                        if (mouse.modifiers & Qt.ShiftModifier) {
+                            pane.selectRange(index)
+                        } else if (mouse.modifiers & Qt.ControlModifier) {
                             pane.toggleMulti(index)
+                            pane.selAnchor = index
                         } else {
-                            listView.currentIndex = index
-                            pane.multiSet = []
+                            pane.selectOnly(index)
                         }
                     }
 
