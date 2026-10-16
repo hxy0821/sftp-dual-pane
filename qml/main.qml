@@ -47,6 +47,28 @@ ApplicationWindow {
         return (p && p.length) ? p : "/"
     }
 
+    // 进度停滞看门狗：超过 3 秒没有新进度（网络卡住等）时把该行速度归零、
+    // 隐藏剩余时间，避免长时间显示过期的“假数字”
+    Timer {
+        interval: 1000
+        repeat: true
+        running: activeCount > 0
+        onTriggered: {
+            var now = Date.now()
+            for (var i = 0; i < transferListModel.count; i++) {
+                var it = transferListModel.get(i)
+                if (it.status !== "running" || it.lastTs <= 0)
+                    continue
+                if (now - it.lastTs > 3000) {
+                    if (it.speed !== 0)
+                        transferListModel.setProperty(i, "speed", 0)
+                    if (it.eta !== -1)
+                        transferListModel.setProperty(i, "eta", -1)
+                }
+            }
+        }
+    }
+
     // 底部单行状态消息：✘ 开头显示红色，✔ 开头显示绿色，⚠ 开头显示橙色
     function log(msg) {
         statusMsg = msg
@@ -393,24 +415,18 @@ ApplicationWindow {
             var i = findTaskById(taskId, ["running"])
             if (i < 0)
                 return
-            var it = transferListModel.get(i)
-            var now = Date.now()
-            var sp = it.speed
-            if (now - it.lastTs > 200 && done > it.done) {
-                var inst = (done - it.done) * 1000.0 / (now - it.lastTs)
-                sp = sp > 0 ? sp * 0.7 + inst * 0.3 : inst
-                transferListModel.setProperty(i, "lastTs", now)
-                var remaining = Math.max(0, total - done)
-                transferListModel.setProperty(i, "eta", sp > 0 ? remaining / sp : -1)
-                if (it.upload)
-                    upSpeed = sp
-                else
-                    downSpeed = sp
-            }
+            // 速度/剩余时间由 C++ 侧按滑动窗口算好（约 10Hz），此处只做展示，
+            // 不再用瞬时差值估算，避免数字乱跳
             transferListModel.setProperty(i, "done", done)
             if (total > 0)
                 transferListModel.setProperty(i, "size", total)
-            transferListModel.setProperty(i, "speed", sp)
+            transferListModel.setProperty(i, "speed", speed)
+            transferListModel.setProperty(i, "eta", eta)
+            transferListModel.setProperty(i, "lastTs", Date.now())
+            if (upload)
+                upSpeed = speed
+            else
+                downSpeed = speed
         }
         onTaskFinished: {
             var i = findTaskById(taskId, ["running", "queued"])

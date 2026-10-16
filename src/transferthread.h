@@ -56,7 +56,9 @@ signals:
     void queueCleared();
     void taskCancelled(int taskId, const QString &label);
     void taskStarted(int taskId, const QString &label, bool upload);
-    void progress(int taskId, const QString &label, qint64 done, qint64 total);
+    // speed：字节/秒（滑动窗口测速）；eta：剩余秒数，-1 表示无法估计
+    void progress(int taskId, const QString &label, qint64 done, qint64 total,
+                  double speed, double eta);
     void taskFinished(int taskId, const QString &label, bool ok, const QString &message);
     void taskDone(bool upload, bool ok);
     void allFinished();

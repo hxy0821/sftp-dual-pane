@@ -149,7 +149,7 @@ Item {
             width: 72
             horizontalAlignment: Text.AlignHCenter
             anchors.verticalCenter: parent.verticalCenter
-            text: status === "running" ? Utils.formatBytes(speed) + "/s" : "—"
+            text: (status === "running" && speed > 0) ? Utils.formatBytes(speed) + "/s" : "—"
             color: "#5a6472"
             font.pixelSize: 12
         }
@@ -163,9 +163,13 @@ Item {
             text: {
                 if (status !== "running" || eta < 0)
                     return "—"
+                if (eta < 60)
+                    return Math.max(1, Math.round(eta)) + "秒"
                 var m = Math.floor(eta / 60)
-                var s = Math.floor(eta % 60)
-                return (m > 0 ? m + "分" : "") + s + "秒"
+                if (m < 60)
+                    return m + "分" + Math.round(eta % 60) + "秒"
+                var h = Math.floor(m / 60)
+                return h + "时" + (m % 60) + "分"
             }
             color: "#5a6472"
             font.pixelSize: 12

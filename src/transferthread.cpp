@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QFileInfo>
 
+#include "progressmeter.h"
 #include "sftpclient.h"
 #include "pathutil.h"
 
@@ -248,11 +249,16 @@ void TransferThread::runTask(const TransferTask &t, SftpClient &client)
     // 再逐文件传输
     qint64 done = 0;
     int files = 0;
+    // 进度节流（约 10Hz）与滑动窗口测速：速度/剩余时间不再随瞬时抖动乱跳
+    ProgressMeter meter;
+    meter.begin(total);
     auto chunkCb = [&](qint64 d, qint64) -> bool {
         waitIfPaused();
         if (abortRequested(t.id))
             return false;   // 让 SftpClient 中断当前文件的读写
-        emit progress(t.id, t.label, done + d, total);
+        const qint64 cur = done + d;
+        if (meter.sample(cur))
+            emit progress(t.id, t.label, cur, total, meter.speed(), meter.eta());
         return true;
     };
     for (const PlanItem &p : plan) {
@@ -278,6 +284,10 @@ void TransferThread::runTask(const TransferTask &t, SftpClient &client)
         done += r;
         ++files;
     }
+
+    // 任务结束：忽略节流强制刷新一次，保证界面拿到准确终值（含最后一个文件）
+    meter.force(done);
+    emit progress(t.id, t.label, done, total, meter.speed(), meter.eta());
 
     emit taskFinished(t.id, t.label, true, QStringLiteral("%1 个文件，共 %2 字节").arg(files).arg(done));
     emit taskDone(t.upload, true);

@@ -27,6 +27,7 @@ add_executable(sftp-dual-pane
     src/shellsession.cpp
     src/terminalview.cpp
     src/transferthread.cpp
+    src/progressmeter.cpp
     src/settingsstore.cpp
     src/openregistry.cpp
     resources.qrc
