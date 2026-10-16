@@ -18,7 +18,7 @@ Rectangle {
 
     radius: 5
     clip: true
-    color: failed ? "#f7dcdd" : "#e4e8ee"
+    color: failed ? "#4A2429" : "#1E293B"
 
     Rectangle {
         id: fill
@@ -29,9 +29,9 @@ Rectangle {
                ? Math.max(parent.height, control.progress * parent.width) : 0
         radius: 5
         clip: true
-        color: control.failed ? "#e5484d"
-             : control.cancelled ? "#a9b4c2"
-             : control.finished ? "#2fa356" : "#3a7afe"
+        color: control.failed ? "#F87171"
+             : control.cancelled ? "#475569"
+             : control.finished ? "#10B981" : "#3B82F6"
         // 竖向渐变：上浅下深，进度条更有质感
         gradient: Gradient {
             GradientStop { position: 0.0; color: Qt.lighter(fill.color, 1.22) }

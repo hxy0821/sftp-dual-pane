@@ -46,9 +46,9 @@ Item {
         id: cardBg
         anchors.fill: parent
         radius: 8
-        color: "#ffffff"
+        color: "#131C31"
         border.width: 1
-        border.color: "#e3e7ee"
+        border.color: "#1E293B"
     }
 
     ColumnLayout {
@@ -67,13 +67,13 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: 5
-                    color: panel.currentTab === 0 ? "#e9f0ff" : "transparent"
+                    color: panel.currentTab === 0 ? "#1E293B" : "transparent"
                 }
                 Label {
                     id: queueTitle
                     anchors.centerIn: parent
                     text: "传输队列 (" + panel.activeCount + ")"
-                    color: panel.currentTab === 0 ? "#1d5fd6" : "#5a6472"
+                    color: panel.currentTab === 0 ? "#60A5FA" : "#94A3B8"
                     font.bold: panel.currentTab === 0
                 }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -85,13 +85,13 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: 5
-                    color: panel.currentTab === 1 ? "#e9f0ff" : "transparent"
+                    color: panel.currentTab === 1 ? "#1E293B" : "transparent"
                 }
                 Label {
                     id: doneTitle
                     anchors.centerIn: parent
                     text: "已完成 (" + panel.doneCount + ")"
-                    color: panel.currentTab === 1 ? "#1d5fd6" : "#5a6472"
+                    color: panel.currentTab === 1 ? "#60A5FA" : "#94A3B8"
                     font.bold: panel.currentTab === 1
                 }
                 MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
@@ -111,21 +111,21 @@ Item {
             }
         }
 
-        Rectangle { Layout.fillWidth: true; height: 1; color: "#eef1f4" }
+        Rectangle { Layout.fillWidth: true; height: 1; color: "#1E293B" }
 
         // 列标题（与数据行共用 colPos，逐列同向对齐）
         Item {
             Layout.fillWidth: true
             height: 16
 
-            Label { x: panel.colPos[0]; width: 70; horizontalAlignment: Text.AlignHCenter; text: "方向"; color: "#8a93a0"; font.pixelSize: 11 }
-            Label { x: panel.colPos[1]; width: panel.colPos[2] - 8 - panel.colPos[1]; text: "文件名"; color: "#8a93a0"; font.pixelSize: 11 }
-            Label { x: panel.colPos[2]; width: 64; horizontalAlignment: Text.AlignHCenter; text: "大小"; color: "#8a93a0"; font.pixelSize: 11 }
-            Label { x: panel.colPos[3]; width: 126; horizontalAlignment: Text.AlignHCenter; text: "进度"; color: "#8a93a0"; font.pixelSize: 11 }
-            Label { x: panel.colPos[4] - 2; width: 72; horizontalAlignment: Text.AlignHCenter; text: "速度"; color: "#8a93a0"; font.pixelSize: 11 }
-            Label { x: panel.colPos[5] - 2; width: 58; horizontalAlignment: Text.AlignHCenter; text: "剩余时间"; color: "#8a93a0"; font.pixelSize: 11 }
-            Label { x: panel.colPos[6]; width: 60; horizontalAlignment: Text.AlignHCenter; text: "状态"; color: "#8a93a0"; font.pixelSize: 11 }
-            Label { x: panel.colPos[7]; width: 100; horizontalAlignment: Text.AlignHCenter; text: "操作"; color: "#8a93a0"; font.pixelSize: 11 }
+            Label { x: panel.colPos[0]; width: 70; horizontalAlignment: Text.AlignHCenter; text: "方向"; color: "#64748B"; font.pixelSize: 11 }
+            Label { x: panel.colPos[1]; width: panel.colPos[2] - 8 - panel.colPos[1]; text: "文件名"; color: "#64748B"; font.pixelSize: 11 }
+            Label { x: panel.colPos[2]; width: 64; horizontalAlignment: Text.AlignHCenter; text: "大小"; color: "#64748B"; font.pixelSize: 11 }
+            Label { x: panel.colPos[3]; width: 126; horizontalAlignment: Text.AlignHCenter; text: "进度"; color: "#64748B"; font.pixelSize: 11 }
+            Label { x: panel.colPos[4] - 2; width: 72; horizontalAlignment: Text.AlignHCenter; text: "速度"; color: "#64748B"; font.pixelSize: 11 }
+            Label { x: panel.colPos[5] - 2; width: 58; horizontalAlignment: Text.AlignHCenter; text: "剩余时间"; color: "#64748B"; font.pixelSize: 11 }
+            Label { x: panel.colPos[6]; width: 60; horizontalAlignment: Text.AlignHCenter; text: "状态"; color: "#64748B"; font.pixelSize: 11 }
+            Label { x: panel.colPos[7]; width: 100; horizontalAlignment: Text.AlignHCenter; text: "操作"; color: "#64748B"; font.pixelSize: 11 }
         }
 
         ListView {
@@ -140,7 +140,7 @@ Item {
                 contentItem: Rectangle {
                     implicitWidth: 8
                     radius: 4
-                    color: vbar.pressed ? "#98a2b0" : "#cbd3de"
+                    color: vbar.pressed ? "#475569" : "#334155"
                     visible: vbar.active
                 }
             }
@@ -171,14 +171,14 @@ Item {
                     onPaint: {
                         var ctx = getContext("2d")
                         ctx.reset()
-                        Utils.drawIcon(ctx, "inbox", width, height, "#c3ccd8")
+                        Utils.drawIcon(ctx, "inbox", width, height, "#475569")
                     }
                     Component.onCompleted: requestPaint()
                 }
                 Label {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: panel.currentTab === 0 ? "暂无传输任务" : "暂无已完成记录"
-                    color: "#9aa3b0"
+                    color: "#64748B"
                 }
             }
         }

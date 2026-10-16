@@ -33,11 +33,11 @@ Item {
         return ""
     }
     readonly property color statusColor: {
-        if (status === "running") return paused ? "#d99a2b" : "#3a7afe"
-        if (status === "failed") return "#d5494e"
-        if (status === "done") return "#2fa356"
-        if (status === "cancelled") return "#8a93a0"
-        return "#8a93a0"
+        if (status === "running") return paused ? "#F59E0B" : "#3B82F6"
+        if (status === "failed") return "#F87171"
+        if (status === "done") return "#10B981"
+        if (status === "cancelled") return "#64748B"
+        return "#64748B"
     }
 
     Rectangle {
@@ -45,7 +45,7 @@ Item {
         anchors.fill: parent
         anchors.bottomMargin: 3
         radius: 6
-        color: rowMa.containsMouse ? "#f3f6fb" : "transparent"
+        color: rowMa.containsMouse ? "#1E293B" : "transparent"
 
         // 方向：图标 + 文字（列 0，宽 70）
         Row {
@@ -57,10 +57,10 @@ Item {
                 width: 26
                 height: 26
                 radius: 13
-                color: status === "failed" ? "#fdeaea"
-                     : status === "done" ? "#e6f6ec"
-                     : status === "cancelled" ? "#eef1f5"
-                     : upload ? "#e8f0ff" : "#e6f6ec"
+                color: status === "failed" ? "#3B1D22"
+                     : status === "done" ? "#12271E"
+                     : status === "cancelled" ? "#1E293B"
+                     : upload ? "#1E293B" : "#12271E"
 
                 Text {
                     anchors.centerIn: parent
@@ -68,10 +68,10 @@ Item {
                          : status === "done" ? "\u2713"
                          : status === "cancelled" ? "\u2013"
                          : upload ? "\u2191" : "\u2193"
-                    color: status === "failed" ? "#d5494e"
-                         : status === "done" ? "#2fa356"
-                         : status === "cancelled" ? "#8a93a0"
-                         : upload ? "#3a7afe" : "#2fa356"
+                    color: status === "failed" ? "#F87171"
+                         : status === "done" ? "#10B981"
+                         : status === "cancelled" ? "#64748B"
+                         : upload ? "#3B82F6" : "#10B981"
                     font.pixelSize: 14
                     font.bold: true
                 }
@@ -79,7 +79,7 @@ Item {
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 text: upload ? "上传" : "下载"
-                color: "#5a6472"
+                color: "#94A3B8"
                 font.pixelSize: 12
             }
         }
@@ -91,7 +91,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: name
             elide: Text.ElideMiddle
-            color: "#2b3138"
+            color: "#E2E8F0"
             font.pixelSize: 13
             ToolTip.visible: nameMa.containsMouse
             ToolTip.delay: 500
@@ -106,7 +106,7 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             anchors.verticalCenter: parent.verticalCenter
             text: size > 0 ? Utils.formatBytes(size) : "—"
-            color: "#8a93a0"
+            color: "#64748B"
             font.pixelSize: 12
         }
 
@@ -137,8 +137,8 @@ Item {
                 width: 38
                 horizontalAlignment: Text.AlignRight
                 text: status === "done" ? "100%" : (size > 0 ? Math.round(done / size * 100) + "%" : "—")
-                color: status === "failed" ? "#d5494e"
-                     : status === "done" ? "#2fa356" : "#5a6472"
+                color: status === "failed" ? "#F87171"
+                     : status === "done" ? "#10B981" : "#94A3B8"
                 font.pixelSize: 12
             }
         }
@@ -150,7 +150,7 @@ Item {
             horizontalAlignment: Text.AlignHCenter
             anchors.verticalCenter: parent.verticalCenter
             text: (status === "running" && speed > 0) ? Utils.formatBytes(speed) + "/s" : "—"
-            color: "#5a6472"
+            color: "#94A3B8"
             font.pixelSize: 12
         }
 
@@ -171,7 +171,7 @@ Item {
                 var h = Math.floor(m / 60)
                 return h + "时" + (m % 60) + "分"
             }
-            color: "#5a6472"
+            color: "#94A3B8"
             font.pixelSize: 12
         }
 

@@ -13,7 +13,7 @@ ComboBox {
         rightPadding: control.indicator.width + control.spacing
         text: control.displayText
         font: control.font
-        color: "#2b3138"
+        color: "#E2E8F0"
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
     }
@@ -30,7 +30,7 @@ ComboBox {
             onPaint: {
                 var ctx = getContext("2d")
                 ctx.reset()
-                ctx.strokeStyle = "#5a6472"
+                ctx.strokeStyle = "#94A3B8"
                 ctx.lineWidth = 1.6
                 ctx.lineCap = "round"
                 ctx.lineJoin = "round"
@@ -45,11 +45,11 @@ ComboBox {
 
     background: Rectangle {
         radius: 6
-        color: "#ffffff"
+        color: "#131C31"
         border.width: 1
-        border.color: control.popup.visible ? "#3a7afe"
-                    : control.hovered ? "#b9c4d2"
-                    : "#d8dee7"
+        border.color: control.popup.visible ? "#3B82F6"
+                    : control.hovered ? "#334155"
+                    : "#334155"
     }
 
     delegate: ItemDelegate {
@@ -67,14 +67,14 @@ ComboBox {
                                                  : model[control.textRole])
                   : modelData
             font.pixelSize: 13
-            color: control.highlightedIndex === index ? "#1d5fd6" : "#2b3138"
+            color: control.highlightedIndex === index ? "#60A5FA" : "#E2E8F0"
             verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
         }
 
         background: Rectangle {
             radius: 5
-            color: control.highlightedIndex === index ? "#e9f0ff" : "transparent"
+            color: control.highlightedIndex === index ? "#1E293B" : "transparent"
         }
     }
 
@@ -88,9 +88,9 @@ ComboBox {
 
         background: Rectangle {
             radius: 8
-            color: "#ffffff"
+            color: "#131C31"
             border.width: 1
-            border.color: "#dfe4ec"
+            border.color: "#1E293B"
         }
 
         contentItem: ListView {

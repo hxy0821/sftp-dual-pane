@@ -15,15 +15,15 @@ ToolButton {
     contentItem: Text {
         text: control.text
         font: control.font
-        color: control.dark ? "#c9d3df" : "#3a414a"
+        color: control.dark ? "#CBD5E1" : "#CBD5E1"
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
     }
 
     background: Rectangle {
         radius: 6
-        color: control.pressed ? (control.dark ? "#2a303a" : "#e2e9f4")
-             : control.hovered ? (control.dark ? "#262c35" : "#eef2f8")
+        color: control.pressed ? (control.dark ? "#1E293B" : "#1E293B")
+             : control.hovered ? (control.dark ? "#243044" : "#1E293B")
              : "transparent"
     }
 }

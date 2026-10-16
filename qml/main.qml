@@ -13,13 +13,13 @@ ApplicationWindow {
     minimumWidth: 1360
     minimumHeight: 620
     title: "SFTP 文件传输"
-    color: "#eef1f5"
+    color: "#0F172A"
     font.pixelSize: 13
 
     property bool remoteReady: browse.connected
     property bool connecting: false
     property string statusMsg: ""
-    property color statusMsgColor: "#7b8494"
+    property color statusMsgColor: "#64748B"
 
     // ---------- 传输队列（spec §13/§33） ----------
     property int bottomPage: 0        // 底部面板切换：0=传输队列 1=终端
@@ -98,13 +98,13 @@ ApplicationWindow {
     function log(msg) {
         statusMsg = msg
         if (msg.indexOf("✘") === 0)
-            statusMsgColor = "#d5494e"
+            statusMsgColor = "#F87171"
         else if (msg.indexOf("✔") === 0)
-            statusMsgColor = "#2fa356"
+            statusMsgColor = "#10B981"
         else if (msg.indexOf("⚠") === 0)
-            statusMsgColor = "#d99a2b"
+            statusMsgColor = "#F59E0B"
         else
-            statusMsgColor = "#7b8494"
+            statusMsgColor = "#64748B"
     }
 
     function refreshSaved() {
@@ -609,9 +609,9 @@ ApplicationWindow {
             id: sideNavBg
             anchors.fill: parent
             radius: 8
-            color: "#ffffff"
+            color: "#131C31"
             border.width: 1
-            border.color: "#e3e7ee"
+            border.color: "#1E293B"
         }
 
         Column {
@@ -627,8 +627,8 @@ ApplicationWindow {
                 radius: 6
                 readonly property bool active: bottomPage === 0
                 onActiveChanged: fileIco.requestPaint()
-                color: navFile.active ? "#e9f0ff" : (navMa1.containsMouse ? "#f2f6fc" : "transparent")
-                Rectangle { width: 3; height: 20; radius: 1.5; color: navFile.active ? "#3a7afe" : "transparent"
+                color: navFile.active ? "#1E293B" : (navMa1.containsMouse ? "#1E293B" : "transparent")
+                Rectangle { width: 3; height: 20; radius: 1.5; color: navFile.active ? "#3B82F6" : "transparent"
                             anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
                 Row {
                     anchors.fill: parent
@@ -641,7 +641,7 @@ ApplicationWindow {
                         onPaint: {
                             var ctx = getContext("2d")
                             ctx.reset()
-                            ctx.strokeStyle = navFile.active ? "#3a7afe" : "#5a6472"
+                            ctx.strokeStyle = navFile.active ? "#3B82F6" : "#94A3B8"
                             ctx.lineWidth = 1.8
                             ctx.lineCap = "round"
                             ctx.lineJoin = "round"
@@ -655,7 +655,7 @@ ApplicationWindow {
                         Component.onCompleted: requestPaint()
                     }
                     Label { anchors.verticalCenter: parent.verticalCenter
-                            text: "文件传输"; color: navFile.active ? "#1d5fd6" : "#3a414a"
+                            text: "文件传输"; color: navFile.active ? "#60A5FA" : "#CBD5E1"
                             font.bold: navFile.active }
                     Item { width: 4; height: 1 }
                     Rectangle {
@@ -664,9 +664,9 @@ ApplicationWindow {
                         height: 15
                         radius: 7.5
                         anchors.verticalCenter: parent.verticalCenter
-                        color: "#3a7afe"
+                        color: "#3B82F6"
                         Label { id: countLbl; anchors.centerIn: parent
-                                text: activeCount; color: "#ffffff"; font.pixelSize: 10 }
+                                text: activeCount; color: "#131C31"; font.pixelSize: 10 }
                     }
                 }
                 MouseArea {
@@ -685,8 +685,8 @@ ApplicationWindow {
                 radius: 6
                 readonly property bool active: bottomPage === 1
     onActiveChanged: termIco.requestPaint()
-                color: navTerm.active ? "#e9f0ff" : (navMa2.containsMouse ? "#f2f6fc" : "transparent")
-                Rectangle { width: 3; height: 20; radius: 1.5; color: navTerm.active ? "#3a7afe" : "transparent"
+                color: navTerm.active ? "#1E293B" : (navMa2.containsMouse ? "#1E293B" : "transparent")
+                Rectangle { width: 3; height: 20; radius: 1.5; color: navTerm.active ? "#3B82F6" : "transparent"
                             anchors.left: parent.left; anchors.verticalCenter: parent.verticalCenter }
                 Row {
                     anchors.fill: parent
@@ -699,7 +699,7 @@ ApplicationWindow {
                         onPaint: {
                             var ctx = getContext("2d")
                             ctx.reset()
-                            ctx.strokeStyle = navTerm.active ? "#3a7afe" : "#5a6472"
+                            ctx.strokeStyle = navTerm.active ? "#3B82F6" : "#94A3B8"
                             ctx.lineWidth = 1.8
                             ctx.lineCap = "round"
                             ctx.lineJoin = "round"
@@ -710,7 +710,7 @@ ApplicationWindow {
                         Component.onCompleted: requestPaint()
                     }
                     Label { anchors.verticalCenter: parent.verticalCenter
-                            text: "终端"; color: navTerm.active ? "#1d5fd6" : "#3a414a"
+                            text: "终端"; color: navTerm.active ? "#60A5FA" : "#CBD5E1"
                             font.bold: navTerm.active }
                 }
                 MouseArea {
@@ -730,7 +730,7 @@ ApplicationWindow {
                 // 悬停或菜单已展开都视为选中态，图标/文字/底色保持一致
                 readonly property bool active: navMa4.containsMouse || connMenu.visible
                 onActiveChanged: settingsIco.requestPaint()
-                color: connMenu.visible ? "#e9f0ff" : (navMa4.containsMouse ? "#f2f6fc" : "transparent")
+                color: connMenu.visible ? "#1E293B" : (navMa4.containsMouse ? "#1E293B" : "transparent")
                 Row {
                     anchors.fill: parent
                     anchors.leftMargin: 12
@@ -743,12 +743,12 @@ ApplicationWindow {
                             var ctx = getContext("2d")
                             ctx.reset()
                             Utils.drawIcon(ctx, "sliders", width, height,
-                                           navSettings.active ? "#3a7afe" : "#5a6472")
+                                           navSettings.active ? "#3B82F6" : "#94A3B8")
                         }
                         Component.onCompleted: requestPaint()
                     }
                     Label { anchors.verticalCenter: parent.verticalCenter
-                            text: "设置"; color: navSettings.active ? "#1d5fd6" : "#3a414a"
+                            text: "设置"; color: navSettings.active ? "#60A5FA" : "#CBD5E1"
                             font.bold: navSettings.active }
                 }
                 MouseArea {
@@ -779,9 +779,9 @@ ApplicationWindow {
             Rectangle {
                 anchors.fill: parent
                 radius: 8
-                color: "#ffffff"
+                color: "#131C31"
                 border.width: 1
-                border.color: "#e3e7ee"
+                border.color: "#1E293B"
             }
 
             RowLayout {
@@ -806,32 +806,32 @@ ApplicationWindow {
                     contentItem: Rectangle {
                         implicitWidth: 1
                         implicitHeight: 20
-                        color: "#dde2e9"
+                        color: "#334155"
                     }
                 }
 
-                Label { text: "主机"; color: "#5a6472" }
+                Label { text: "主机"; color: "#94A3B8" }
                 UiInput {
                     id: hostField
                     Layout.preferredWidth: 150
                     placeholderText: "IP 或主机名"
                     onTextEdited: clearLoaded()
                 }
-                Label { text: "端口"; color: "#5a6472" }
+                Label { text: "端口"; color: "#94A3B8" }
                 UiInput {
                     id: portField
                     Layout.preferredWidth: 60
                     text: "22"
                     onTextEdited: clearLoaded()
                 }
-                Label { text: "用户名"; color: "#5a6472" }
+                Label { text: "用户名"; color: "#94A3B8" }
                 UiInput {
                     id: userField
                     Layout.preferredWidth: 110
                     placeholderText: "用户名"
                     onTextEdited: clearLoaded()
                 }
-                Label { text: "密码"; color: "#5a6472" }
+                Label { text: "密码"; color: "#94A3B8" }
                 UiInput {
                     id: passField
                     Layout.preferredWidth: 130
@@ -912,14 +912,14 @@ ApplicationWindow {
                             onPaint: {
                                 var ctx = getContext("2d")
                                 ctx.reset()
-                                Utils.drawIcon(ctx, "arrowRight", width, height, "#ffffff")
+                                Utils.drawIcon(ctx, "arrowRight", width, height, "#131C31")
                             }
                             Component.onCompleted: requestPaint()
                         }
                         background: Rectangle {
                             radius: 13
-                            color: midUploadBtn.pressed ? "#2e63d6"
-                                 : midUploadBtn.hovered ? "#5589ff" : "#3a7afe"
+                            color: midUploadBtn.pressed ? "#2563EB"
+                                 : midUploadBtn.hovered ? "#3B82F6" : "#3B82F6"
                         }
                     }
                     ToolButton {
@@ -940,14 +940,14 @@ ApplicationWindow {
                             onPaint: {
                                 var ctx = getContext("2d")
                                 ctx.reset()
-                                Utils.drawIcon(ctx, "arrowLeft", width, height, "#ffffff")
+                                Utils.drawIcon(ctx, "arrowLeft", width, height, "#131C31")
                             }
                             Component.onCompleted: requestPaint()
                         }
                         background: Rectangle {
                             radius: 13
-                            color: midDownloadBtn.pressed ? "#2e63d6"
-                                 : midDownloadBtn.hovered ? "#5589ff" : "#3a7afe"
+                            color: midDownloadBtn.pressed ? "#2563EB"
+                                 : midDownloadBtn.hovered ? "#3B82F6" : "#3B82F6"
                         }
                     }
                 }
@@ -1030,9 +1030,9 @@ ApplicationWindow {
                 Rectangle {
                     anchors.fill: parent
                     radius: 6
-                    color: "#ffffff"
+                    color: "#131C31"
                     border.width: 1
-                    border.color: "#e3e7ee"
+                    border.color: "#1E293B"
                 }
 
                 RowLayout {
@@ -1045,13 +1045,13 @@ ApplicationWindow {
                         Layout.preferredWidth: 8
                         Layout.preferredHeight: 8
                         radius: 4
-                        color: browse.connected ? "#2fa356" : "#9aa3b0"
+                        color: browse.connected ? "#10B981" : "#64748B"
                     }
                     Label {
                         text: browse.connected
                               ? "已连接 " + browse.host + (browse.user.length ? " (" + browse.user + ")" : "")
                               : "未连接"
-                        color: "#3a414a"
+                        color: "#CBD5E1"
                         font.pixelSize: 12
                     }
                     Label {
@@ -1067,7 +1067,7 @@ ApplicationWindow {
                         text: activeCount > 0
                               ? activeCount + " 个传输任务 · 上传 " + Utils.formatBytes(upSpeed) + "/s · 下载 " + Utils.formatBytes(downSpeed) + "/s"
                               : "空闲"
-                        color: "#7b8494"
+                        color: "#64748B"
                         font.pixelSize: 12
                     }
                 }
@@ -1095,9 +1095,9 @@ ApplicationWindow {
 
         background: Rectangle {
             radius: 12
-            color: "#ffffff"
+            color: "#131C31"
             border.width: 1
-            border.color: "#e3e7ee"
+            border.color: "#1E293B"
         }
 
         header: Item {
@@ -1111,8 +1111,8 @@ ApplicationWindow {
 
                 ColumnLayout {
                     spacing: 2
-                    Label { text: "远程文件已变更"; font.pixelSize: 15; font.bold: true; color: "#2b3138" }
-                    Label { text: "本地副本与打开时不一致，请确认是否覆盖"; font.pixelSize: 12; color: "#8a93a0" }
+                    Label { text: "远程文件已变更"; font.pixelSize: 15; font.bold: true; color: "#E2E8F0" }
+                    Label { text: "本地副本与打开时不一致，请确认是否覆盖"; font.pixelSize: 12; color: "#64748B" }
                 }
                 Item { Layout.fillWidth: true }
             }
@@ -1126,13 +1126,13 @@ ApplicationWindow {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
-                Label { text: "说明"; font.pixelSize: 11; color: "#9aa3b0" }
+                Label { text: "说明"; font.pixelSize: 11; color: "#64748B" }
                 Label {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 388   // 固定内容宽度，避免 wrap 文本与 Dialog contentHeight 互相触发绑定环
                     wrapMode: Text.Wrap
                     font.pixelSize: 13
-                    color: "#3a414a"
+                    color: "#CBD5E1"
                     text: "远程文件「" + (backConflictDialog.entry ? backConflictDialog.entry.name : "") +
                           "」在打开后被其它途径修改过（当前 " +
                           Utils.formatBytes(backConflictDialog.remoteSize) + "，打开时 " +
@@ -1172,9 +1172,9 @@ ApplicationWindow {
         rightPadding: 4
         background: Rectangle {
             radius: 8
-            color: "#ffffff"
+            color: "#131C31"
             border.width: 1
-            border.color: "#dfe4ec"
+            border.color: "#1E293B"
         }
         MenuItem {
             text: "保存当前连接"
@@ -1219,9 +1219,9 @@ ApplicationWindow {
 
         background: Rectangle {
             radius: 12
-            color: "#ffffff"
+            color: "#131C31"
             border.width: 1
-            border.color: "#e3e7ee"
+            border.color: "#1E293B"
         }
 
         header: Item {
@@ -1237,14 +1237,14 @@ ApplicationWindow {
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
                     radius: 20
-                    color: "#e8f0ff"
+                    color: "#1E293B"
                     Canvas {
                         anchors.centerIn: parent
                         width: 15; height: 15
                         onPaint: {
                             var ctx = getContext("2d")
                             ctx.reset()
-                            ctx.strokeStyle = "#3a7afe"
+                            ctx.strokeStyle = "#3B82F6"
                             ctx.lineWidth = 1.8
                             ctx.lineCap = "round"
                             ctx.lineJoin = "round"
@@ -1260,8 +1260,8 @@ ApplicationWindow {
 
                 ColumnLayout {
                     spacing: 2
-                    Label { text: "保存连接"; font.pixelSize: 15; font.bold: true; color: "#2b3138" }
-                    Label { text: "保存后可在左侧下拉框快速切换"; font.pixelSize: 12; color: "#8a93a0" }
+                    Label { text: "保存连接"; font.pixelSize: 15; font.bold: true; color: "#E2E8F0" }
+                    Label { text: "保存后可在左侧下拉框快速切换"; font.pixelSize: 12; color: "#64748B" }
                 }
                 Item { Layout.fillWidth: true }
             }
@@ -1275,7 +1275,7 @@ ApplicationWindow {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
-                Label { text: "名称"; font.pixelSize: 11; color: "#9aa3b0" }
+                Label { text: "名称"; font.pixelSize: 11; color: "#64748B" }
                 UiInput {
                     id: saveNameField
                     Layout.fillWidth: true

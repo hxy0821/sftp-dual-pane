@@ -10,9 +10,9 @@ Button {
     property bool danger: false
     property string iconName: ""
 
-    readonly property color textColor: control.primary ? "#ffffff"
-                                     : control.danger ? "#d5494e"
-                                     : "#3a414a"
+    readonly property color textColor: control.primary ? "#131C31"
+                                     : control.danger ? "#F87171"
+                                     : "#CBD5E1"
 
     font.pixelSize: 13
     implicitHeight: 30
@@ -60,20 +60,20 @@ Button {
         radius: 6
         color: {
             if (control.primary)
-                return control.pressed ? "#2e63d6" : control.hovered ? "#5589ff" : "#3a7afe"
+                return control.pressed ? "#2563EB" : control.hovered ? "#3B82F6" : "#3B82F6"
             if (control.pressed)
-                return control.danger ? "#fbecec" : "#e2e9f4"
+                return control.danger ? "#3B1D22" : "#1E293B"
             if (control.hovered)
-                return control.danger ? "#fdf4f4" : "#f2f6fc"
-            return "#ffffff"
+                return control.danger ? "#3B1D22" : "#1E293B"
+            return "#131C31"
         }
         border.width: control.primary ? 0 : 1
         border.color: {
             if (control.primary)
                 return "transparent"
             if (control.danger)
-                return control.hovered || control.pressed ? "#e5b1b3" : "#eccdce"
-            return control.hovered || control.pressed ? "#b9c4d2" : "#d8dee7"
+                return control.hovered || control.pressed ? "#4A2429" : "#3B1D22"
+            return control.hovered || control.pressed ? "#334155" : "#334155"
         }
     }
 }

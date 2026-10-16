@@ -8,7 +8,7 @@ Item {
 
     property real radius: 8
     property real strength: 1.0
-    property color tint: "#0f1b2d"
+    property color tint: "#0B0F19"
 
     Rectangle {
         x: -6

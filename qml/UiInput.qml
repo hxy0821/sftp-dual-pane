@@ -6,9 +6,9 @@ TextField {
     id: control
 
     font.pixelSize: 13
-    color: "#2b3138"
-    selectionColor: "#3a7afe"
-    selectedTextColor: "#ffffff"
+    color: "#E2E8F0"
+    selectionColor: "#3B82F6"
+    selectedTextColor: "#131C31"
     leftPadding: 10
     rightPadding: 10
     topPadding: 6
@@ -18,10 +18,10 @@ TextField {
     background: Rectangle {
         implicitHeight: 30
         radius: 6
-        color: "#ffffff"
+        color: "#131C31"
         border.width: 1
-        border.color: control.activeFocus ? "#3a7afe"
-                    : control.hovered ? "#b9c4d2"
-                    : "#d8dee7"
+        border.color: control.activeFocus ? "#3B82F6"
+                    : control.hovered ? "#334155"
+                    : "#334155"
     }
 }
