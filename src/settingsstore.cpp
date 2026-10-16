@@ -94,6 +94,65 @@ void SettingsStore::setLastLocalPath(const QString &p)
     QSettings().setValue(QStringLiteral("lastLocalPath"), p);
 }
 
+// —— 路径书签 ——
+
+static QString bookmarkKey(const QString &side)
+{
+    return side == QLatin1String("remote") ? QStringLiteral("bookmarksRemote")
+                                           : QStringLiteral("bookmarksLocal");
+}
+
+static QVariantList loadBookmarks(const QString &key)
+{
+    QSettings s;
+    const QString json = s.value(key).toString();
+    if (json.isEmpty())
+        return {};
+    return QJsonDocument::fromJson(json.toUtf8()).toVariant().toList();
+}
+
+static void storeBookmarks(const QString &key, const QVariantList &list)
+{
+    QSettings s;
+    s.setValue(key, QString::fromUtf8(QJsonDocument::fromVariant(list).toJson(QJsonDocument::Compact)));
+}
+
+QVariantList SettingsStore::bookmarks(const QString &side) const
+{
+    return loadBookmarks(bookmarkKey(side));
+}
+
+bool SettingsStore::toggleBookmark(const QString &side, const QString &path)
+{
+    const QString p = path.trimmed();
+    if (p.isEmpty())
+        return false;
+
+    const QString key = bookmarkKey(side);
+    QVariantList list = loadBookmarks(key);
+    for (int i = 0; i < list.size(); ++i) {
+        if (list.at(i).toMap().value(QStringLiteral("path")).toString() == p) {
+            list.removeAt(i);
+            storeBookmarks(key, list);
+            return false;   // 已取消书签
+        }
+    }
+
+    QString name = p;
+    const int slash = name.lastIndexOf(QLatin1Char('/'));
+    if (slash >= 0 && slash + 1 < name.length())
+        name = name.mid(slash + 1);
+    if (name.isEmpty())
+        name = QStringLiteral("/");
+
+    QVariantMap m;
+    m.insert(QStringLiteral("name"), name);
+    m.insert(QStringLiteral("path"), p);
+    list.append(m);
+    storeBookmarks(key, list);
+    return true;   // 已添加书签
+}
+
 QString SettingsStore::lastRemotePath() const
 {
     return QSettings().value(QStringLiteral("lastRemotePath")).toString();

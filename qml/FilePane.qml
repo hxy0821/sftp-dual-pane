@@ -1,6 +1,7 @@
 import QtQuick 2.11
 import QtQuick.Controls 2.4
 import QtQuick.Layouts 1.11
+import QtQuick.Window 2.11
 import "utils.js" as Utils
 
 Item {
@@ -13,6 +14,38 @@ Item {
     property bool remoteReady: false       // 远程面板：是否已连接
     property string hostBadge: ""          // 远程面板：面包屑前的主机徽章（user@host）
     property bool dragActive: false
+
+    // 键盘焦点是否在本面板内（供全局快捷键判断“活动面板”）
+    readonly property bool isActive: {
+        var win = pane.Window.window
+        if (!win || !win.activeFocusItem)
+            return false
+        var it = win.activeFocusItem
+        while (it) {
+            if (it === pane)
+                return true
+            it = it.parent
+        }
+        return false
+    }
+
+    function focusList() {
+        listView.forceActiveFocus()
+    }
+
+    // 书签数据（[{name, path}]），驱动 bookmarkPopup 的列表
+    property var bookmarkModel: []
+
+    // 书签弹层：列出当前面板的书签，点击跳转（Ctrl+D 收藏，已在书签中的再按一次取消）
+    function openBookmarks() {
+        var list = settingsStore.bookmarks(pane.side)
+        bookmarkModel = list.length > 0 ? list : []
+        // 注意：Popup 的 x/y 相对其 parent，而不是窗口场景坐标
+        var pt = bookmarkBtn.mapToItem(bookmarkPopup.parent, 0, bookmarkBtn.height + 2)
+        bookmarkPopup.x = pt.x
+        bookmarkPopup.y = pt.y
+        bookmarkPopup.open()
+    }
     property var multiSet: []
     property int selAnchor: -1             // Shift 范围选择的锚点行
     property string ghostText: ""
@@ -194,6 +227,12 @@ Item {
                 text: "新建"
                 iconName: "newfolder"
                 onClicked: mkdirDialog.openFor()
+            }
+            UiAction {
+                id: bookmarkBtn
+                text: "书签"
+                iconName: "bookmark"
+                onClicked: pane.openBookmarks()
             }
             Item { Layout.fillWidth: true }
             UiAction {
@@ -628,6 +667,73 @@ Item {
         MenuItem { text: "新建文件夹"; onTriggered: mkdirDialog.openFor() }
         MenuItem { text: "新建文件"; onTriggered: newFileDialog.openFor() }
         MenuItem { text: "刷新"; onTriggered: if (pane.model) pane.model.refresh() }
+    }
+
+    // 书签弹层：自绘列表（不用 Menu——QQuickMenu 在 5.11 下动态项的高度/触发都不稳定）
+    Popup {
+        id: bookmarkPopup
+        padding: 4
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        focus: true
+
+        background: Rectangle {
+            radius: 8
+            color: "#ffffff"
+            border.width: 1
+            border.color: "#dfe4ec"
+        }
+
+        contentItem: Column {
+            spacing: 2
+            width: 210
+
+            Repeater {
+                model: pane.bookmarkModel
+
+                delegate: Rectangle {
+                    width: 210
+                    height: 32
+                    radius: 5
+                    color: bkmMa.containsMouse ? "#eef3fb" : "transparent"
+
+                    Text {
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        anchors.rightMargin: 8
+                        verticalAlignment: Text.AlignVCenter
+                        text: modelData.name
+                        color: "#2b3138"
+                        font.pixelSize: 13
+                        elide: Text.ElideMiddle
+                        ToolTip.visible: bkmMa.containsMouse
+                        ToolTip.delay: 600
+                        ToolTip.text: modelData.path
+                    }
+                    MouseArea {
+                        id: bkmMa
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (pane.model)
+                                pane.model.setDir(modelData.path)
+                            bookmarkPopup.close()
+                        }
+                    }
+                }
+            }
+
+            Text {
+                visible: pane.bookmarkModel.length === 0
+                width: 210
+                height: 32
+                verticalAlignment: Text.AlignVCenter
+                horizontalAlignment: Text.AlignHCenter
+                text: "（暂无书签，Ctrl+D 收藏当前路径）"
+                color: "#9aa3b0"
+                font.pixelSize: 12
+            }
+        }
     }
 
     Menu {

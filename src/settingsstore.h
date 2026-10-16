@@ -25,6 +25,11 @@ public:
     Q_INVOKABLE QString homeDir() const;
     Q_INVOKABLE bool openPath(const QString &path);
 
+    // 路径书签：side = "local" | "remote"，返回 [{ name, path }]
+    Q_INVOKABLE QVariantList bookmarks(const QString &side) const;
+    // Ctrl+D 切换书签：已存在则移除，否则添加；返回 true 表示已添加
+    Q_INVOKABLE bool toggleBookmark(const QString &side, const QString &path);
+
 private:
     explicit SettingsStore(QObject *parent = nullptr);
 };

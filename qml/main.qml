@@ -39,6 +39,31 @@ ApplicationWindow {
         }
         return -1
     }
+
+    // —— 全局快捷键辅助 ——
+    // 当前活动文件面板：焦点在哪个面板块内就是哪个，都不在时默认本地面板
+    function activePane() {
+        if (remotePane.isActive)
+            return remotePane
+        return localPane
+    }
+    function refreshActivePane() {
+        var p = activePane()
+        if (p === remotePane && !browse.connected) {
+            log("⚠ 未连接远程主机，无法刷新远程面板")
+            return
+        }
+        p.model.refresh()
+    }
+    function toggleActiveBookmark() {
+        var p = activePane()
+        if (p === remotePane && !browse.connected) {
+            log("⚠ 未连接远程主机")
+            return
+        }
+        var added = settingsStore.toggleBookmark(p.side, p.model.currentPath)
+        log((added ? "✔ 已添加书签：" : "✔ 已取消书签：") + p.model.currentPath)
+    }
     // 当前表单实际载入的已保存连接名；为空表示表单是手动输入的新连接。
     // 下拉框的高亮始终跟随它，保证“看到的名字”和“表单里的值”一致
     property string loadedConnection: ""
@@ -335,6 +360,28 @@ ApplicationWindow {
                 doUploadBack(pendingBack)
             }
         }
+    }
+
+    // —— 全局快捷键 ——
+    // F5 刷新活动面板；Ctrl+1/2 把键盘焦点切到左/右文件列表；Ctrl+D 收藏/取消书签。
+    // Backspace（上级目录）在文件列表获得焦点时由列表自身处理，避免抢输入框退格。
+    Shortcut {
+        sequence: "F5"
+        enabled: root.bottomPage === 0
+        onActivated: refreshActivePane()
+    }
+    Shortcut {
+        sequence: "Ctrl+1"
+        onActivated: localPane.focusList()
+    }
+    Shortcut {
+        sequence: "Ctrl+2"
+        onActivated: remotePane.focusList()
+    }
+    Shortcut {
+        sequence: "Ctrl+D"
+        enabled: root.bottomPage === 0   // 终端页内 Ctrl+D 保留给 shell（EOF）
+        onActivated: toggleActiveBookmark()
     }
 
     ShellSession {

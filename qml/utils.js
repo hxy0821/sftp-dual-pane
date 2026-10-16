@@ -219,6 +219,15 @@ function drawIcon(ctx, name, w, h, color) {
         ctx.moveTo(3.8, 12.2)
         ctx.lineTo(12.2, 3.8)
         ctx.stroke()
+    } else if (name === "bookmark") {
+        ctx.beginPath()
+        ctx.moveTo(4.8, 2.5)
+        ctx.lineTo(11.2, 2.5)
+        ctx.lineTo(11.2, 13.5)
+        ctx.lineTo(8, 10.6)
+        ctx.lineTo(4.8, 13.5)
+        ctx.closePath()
+        ctx.stroke()
     }
     ctx.restore()
 }
