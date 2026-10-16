@@ -915,6 +915,7 @@ ApplicationWindow {
                 title: "远程 (Remote)"
                 peerPane: localPane
                 remoteReady: browse.connected
+                hostBadge: browse.connected ? (browse.user + "@" + browse.host) : ""
                 onDropToPeer: startTransfer("remote", "local", paths)
                 onOpenFile: openRemotePath(remotePane.model, index)
                 onUploadBack: uploadOneBack(remotePane.model.pathAt(index))

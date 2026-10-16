@@ -11,6 +11,7 @@ Item {
     property string title: ""
     property var peerPane: null
     property bool remoteReady: false       // 远程面板：是否已连接
+    property string hostBadge: ""          // 远程面板：面包屑前的主机徽章（user@host）
     property bool dragActive: false
     property var multiSet: []
     property int selAnchor: -1             // Shift 范围选择的锚点行
@@ -167,14 +168,10 @@ Item {
                 font.bold: true
                 color: "#2b3138"
             }
-            UiInput {
-                id: pathField
+            PathBreadcrumb {
                 Layout.fillWidth: true
-                placeholderText: "路径"
-                onEditingFinished: {
-                    if (pane.model && text !== pane.model.currentPath)
-                        pane.model.setDir(text)
-                }
+                dirModel: pane.model
+                hostBadge: pane.hostBadge
             }
         }
 
@@ -573,17 +570,6 @@ Item {
             text: pane.ghostText
             elide: Text.ElideMiddle
         }
-    }
-
-    Connections {
-        target: pane.model
-        enabled: pane.model !== null
-        onPathChanged: pathField.text = pane.model.currentPath
-    }
-
-    Component.onCompleted: {
-        if (pane.model)
-            pathField.text = pane.model.currentPath
     }
 
     Menu {

@@ -7,6 +7,7 @@
         <file>qml/UiAction.qml</file>
         <file>qml/CardShadow.qml</file>
         <file>qml/UiInput.qml</file>
+        <file>qml/PathBreadcrumb.qml</file>
         <file>qml/UiCombo.qml</file>
         <file>qml/UiCheck.qml</file>
         <file>qml/TransferProgress.qml</file>
