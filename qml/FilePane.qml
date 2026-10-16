@@ -70,10 +70,9 @@ Item {
         id: cardBg
         anchors.fill: parent
         radius: 8
-        color: "#131C31"
+        color: "#ffffff"
         border.width: 1
-        // 活动面板蓝框（设计稿：焦点在哪个面板一眼可见）
-        border.color: pane.isActive ? "#3B82F6" : "#1E293B"
+        border.color: "#e3e7ee"
     }
 
     function clearMulti() { pane.multiSet = [] }
@@ -170,7 +169,7 @@ Item {
                 Layout.preferredWidth: 22
                 Layout.preferredHeight: 22
                 radius: 6
-                color: pane.side === "remote" ? "#12271E" : "#1E293B"
+                color: pane.side === "remote" ? "#e6f6ec" : "#e8f0ff"
 
                 Canvas {
                     anchors.centerIn: parent
@@ -179,7 +178,7 @@ Item {
                     onPaint: {
                         var ctx = getContext("2d")
                         ctx.reset()
-                        ctx.strokeStyle = pane.side === "remote" ? "#10B981" : "#3B82F6"
+                        ctx.strokeStyle = pane.side === "remote" ? "#2fa356" : "#3a7afe"
                         ctx.lineWidth = 1.7
                         ctx.lineCap = "round"
                         ctx.lineJoin = "round"
@@ -200,7 +199,7 @@ Item {
             Label {
                 text: pane.title
                 font.bold: true
-                color: "#E2E8F0"
+                color: "#2b3138"
             }
             PathBreadcrumb {
                 Layout.fillWidth: true
@@ -241,7 +240,7 @@ Item {
                 text: "上传选中"
                 iconName: "upload"
                 enabled: pane.selectedCount > 0 && pane.remoteReady
-                tint: enabled ? "#60A5FA" : "#64748B"
+                tint: enabled ? "#1d5fd6" : "#8a93a0"
                 onClicked: pane.transferSelected(true)
             }
             UiAction {
@@ -249,36 +248,12 @@ Item {
                 text: "下载选中"
                 iconName: "download"
                 enabled: pane.selectedCount > 0 && pane.remoteReady
-                tint: enabled ? "#60A5FA" : "#64748B"
+                tint: enabled ? "#1d5fd6" : "#8a93a0"
                 onClicked: pane.transferSelected(false)
             }
         }
 
-        Rectangle { Layout.fillWidth: true; height: 1; color: "#1E293B" }
-
-        // 表头（列宽与行内一致：名称 fill / 大小 80 / 修改时间 105）
-        RowLayout {
-            Layout.fillWidth: true
-            height: 20
-            spacing: 10
-            Label {
-                Layout.fillWidth: true
-                Layout.leftMargin: 38
-                text: "名称"
-                color: "#64748B"
-                font.pixelSize: 11
-                font.bold: true
-            }
-            Label { Layout.preferredWidth: 80; text: "大小"; color: "#64748B"; font.pixelSize: 11; font.bold: true }
-            Label {
-                Layout.preferredWidth: 105
-                Layout.rightMargin: 12
-                text: "修改时间"
-                color: "#64748B"
-                font.pixelSize: 11
-                font.bold: true
-            }
-        }
+        Rectangle { Layout.fillWidth: true; height: 1; color: "#eef1f4" }
 
         ListView {
             id: listView
@@ -372,7 +347,7 @@ Item {
                 contentItem: Rectangle {
                     implicitWidth: 8
                     radius: 4
-                    color: vbar.pressed ? "#475569" : "#334155"
+                    color: vbar.pressed ? "#98a2b0" : "#cbd3de"
                     visible: vbar.active
                 }
             }
@@ -402,12 +377,12 @@ Item {
                 radius: 6
                 color: {
                     if (listView.currentIndex === index)
-                        return "#1D3D85"
+                        return "#d5e4ff"
                     if (pane.multiSet.indexOf(index) >= 0)
-                        return "#193572"
+                        return "#e3edff"
                     if (ma.containsMouse)
-                        return "#1E293B"
-                    return "transparent"
+                        return "#f3f6fb"
+                    return index % 2 === 0 ? "#ffffff" : "#fafbfd"
                 }
 
                 RowLayout {
@@ -431,14 +406,14 @@ Item {
                                 width: 9
                                 height: 5
                                 radius: 1
-                                color: "#F59E0B"
+                                color: "#e9a52f"
                             }
                             Rectangle {
                                 y: 3
                                 width: 16
                                 height: 12
                                 radius: 3
-                                color: "#FBBF24"
+                                color: "#f7b955"
                             }
                         }
                         Rectangle {
@@ -452,7 +427,7 @@ Item {
                             Text {
                                 anchors.centerIn: parent
                                 text: Utils.typeTag(model.name)
-                                color: "#131C31"
+                                color: "#ffffff"
                                 font.pixelSize: 7
                                 font.bold: true
                             }
@@ -464,23 +439,14 @@ Item {
                         text: model.name
                         elide: Text.ElideMiddle
                         font.bold: model.isDir
-                        color: listView.currentIndex === index ? "#60A5FA"
-                             : model.isDir ? "#60A5FA" : "#E2E8F0"
+                        color: listView.currentIndex === index ? "#1d5fd6"
+                             : model.isDir ? "#1a4e8a" : "#2b3138"
                     }
                     Label {
                         visible: !model.isDir
                         text: Utils.formatBytes(model.size)
-                        font.pixelSize: 11
-                        Layout.preferredWidth: 80
-                        color: listView.currentIndex === index ? "#60A5FA" : "#64748B"
-                    }
-                    Label {
-                        visible: !model.isDir
-                        text: Utils.formatTime(model.mtime)
-                        font.pixelSize: 11
-                        font.family: "monospace"
-                        Layout.preferredWidth: 105
-                        color: listView.currentIndex === index ? "#60A5FA" : "#64748B"
+                        font.pixelSize: 12
+                        color: listView.currentIndex === index ? "#5a83d8" : "#8a93a0"
                     }
                 }
 
@@ -500,10 +466,9 @@ Item {
                     property real startY: 0
 
                     onPressed: {
-                        // 右键也把键盘焦点交给列表，方便菜单操作后继续用快捷键
-                        listView.forceActiveFocus()
                         if (mouse.button === Qt.RightButton)
                             return
+                        listView.forceActiveFocus()
                         startX = mouse.x
                         startY = mouse.y
                         isDragging = false
@@ -590,14 +555,14 @@ Item {
                         ctx.reset()
                         Utils.drawIcon(ctx,
                                        (pane.side === "remote" && !pane.remoteReady) ? "ban" : "folderopen",
-                                       width, height, "#475569")
+                                       width, height, "#c3ccd8")
                     }
                     Component.onCompleted: requestPaint()
                 }
                 Label {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: (pane.side === "remote" && !pane.remoteReady) ? "未连接远程主机" : "（空目录）"
-                    color: "#64748B"
+                    color: "#9aa3b0"
                 }
             }
         }
@@ -609,17 +574,17 @@ Item {
 
             Label {
                 text: "共 " + (listView.count || 0) + " 项"
-                color: "#64748B"
+                color: "#8a93a0"
                 font.pixelSize: 11
             }
             Rectangle {
                 Layout.preferredWidth: 1
                 Layout.preferredHeight: 9
-                color: "#1E293B"
+                color: "#e3e7ee"
             }
             Label {
                 text: "选中 " + pane.selectedCount + " 项"
-                color: pane.selectedCount > 0 ? "#60A5FA" : "#64748B"
+                color: pane.selectedCount > 0 ? "#1d5fd6" : "#8a93a0"
                 font.pixelSize: 11
             }
             Item { Layout.fillWidth: true }
@@ -634,7 +599,7 @@ Item {
         width: 160
         height: 32
         radius: 8
-        color: "#3B82F6"
+        color: "#3a7afe"
         opacity: 0.94
         Label {
             anchors.fill: parent
@@ -648,13 +613,6 @@ Item {
 
     Menu {
         id: ctxMenu
-        palette.text: "#CBD5E1"
-        palette.window: "#131C31"
-        palette.base: "#131C31"
-        palette.highlight: "#1E293B"
-        palette.highlightedText: "#F8FAFC"
-        palette.mid: "#334155"
-        palette.dark: "#334155"
         property int row: -1
         implicitWidth: 180
         topPadding: 4
@@ -663,9 +621,9 @@ Item {
         rightPadding: 4
         background: Rectangle {
             radius: 8
-            color: "#131C31"
+            color: "#ffffff"
             border.width: 1
-            border.color: "#1E293B"
+            border.color: "#dfe4ec"
         }
 
         MenuItem {
@@ -720,9 +678,9 @@ Item {
 
         background: Rectangle {
             radius: 8
-            color: "#131C31"
+            color: "#ffffff"
             border.width: 1
-            border.color: "#1E293B"
+            border.color: "#dfe4ec"
         }
 
         contentItem: Column {
@@ -736,7 +694,7 @@ Item {
                     width: 210
                     height: 32
                     radius: 5
-                    color: bkmMa.containsMouse ? "#1E293B" : "transparent"
+                    color: bkmMa.containsMouse ? "#eef3fb" : "transparent"
 
                     Text {
                         anchors.fill: parent
@@ -744,7 +702,7 @@ Item {
                         anchors.rightMargin: 8
                         verticalAlignment: Text.AlignVCenter
                         text: modelData.name
-                        color: "#E2E8F0"
+                        color: "#2b3138"
                         font.pixelSize: 13
                         elide: Text.ElideMiddle
                         ToolTip.visible: bkmMa.containsMouse
@@ -772,7 +730,7 @@ Item {
                 verticalAlignment: Text.AlignVCenter
                 horizontalAlignment: Text.AlignHCenter
                 text: "（暂无书签，Ctrl+D 收藏当前路径）"
-                color: "#64748B"
+                color: "#9aa3b0"
                 font.pixelSize: 12
             }
         }
@@ -780,13 +738,6 @@ Item {
 
     Menu {
         id: emptyMenu
-        palette.text: "#CBD5E1"
-        palette.window: "#131C31"
-        palette.base: "#131C31"
-        palette.highlight: "#1E293B"
-        palette.highlightedText: "#F8FAFC"
-        palette.mid: "#334155"
-        palette.dark: "#334155"
         implicitWidth: 150
         topPadding: 4
         bottomPadding: 4
@@ -794,9 +745,9 @@ Item {
         rightPadding: 4
         background: Rectangle {
             radius: 8
-            color: "#131C31"
+            color: "#ffffff"
             border.width: 1
-            border.color: "#1E293B"
+            border.color: "#dfe4ec"
         }
         MenuItem { text: "新建文件夹"; onTriggered: mkdirDialog.openFor() }
         MenuItem { text: "新建文件"; onTriggered: newFileDialog.openFor() }
@@ -815,9 +766,9 @@ Item {
 
         background: Rectangle {
             radius: 12
-            color: "#131C31"
+            color: "#ffffff"
             border.width: 1
-            border.color: "#1E293B"
+            border.color: "#e3e7ee"
         }
 
         header: Item {
@@ -833,7 +784,7 @@ Item {
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
                     radius: 20
-                    color: "#1E293B"
+                    color: "#e8f0ff"
 
                     Canvas {
                         anchors.centerIn: parent
@@ -841,7 +792,7 @@ Item {
                         onPaint: {
                             var ctx = getContext("2d")
                             ctx.reset()
-                            ctx.fillStyle = "#3B82F6"
+                            ctx.fillStyle = "#3a7afe"
                             ctx.beginPath()
                             ctx.moveTo(1, 3); ctx.lineTo(6.5, 3); ctx.lineTo(8.5, 5.2); ctx.lineTo(1, 5.2)
                             ctx.closePath(); ctx.fill()
@@ -858,8 +809,8 @@ Item {
 
                 ColumnLayout {
                     spacing: 2
-                    Label { text: "新建文件夹"; font.pixelSize: 15; font.bold: true; color: "#E2E8F0" }
-                    Label { text: "在当前目录下创建"; font.pixelSize: 12; color: "#64748B" }
+                    Label { text: "新建文件夹"; font.pixelSize: 15; font.bold: true; color: "#2b3138" }
+                    Label { text: "在当前目录下创建"; font.pixelSize: 12; color: "#8a93a0" }
                 }
                 Item { Layout.fillWidth: true }
             }
@@ -873,12 +824,12 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
-                Label { text: "位置"; font.pixelSize: 11; color: "#64748B" }
+                Label { text: "位置"; font.pixelSize: 11; color: "#9aa3b0" }
                 Rectangle {
                     Layout.fillWidth: true
                     height: 30
                     radius: 6
-                    color: "#0B0F19"
+                    color: "#f5f7fa"
                     Label {
                         anchors.fill: parent
                         anchors.leftMargin: 10
@@ -886,7 +837,7 @@ Item {
                         verticalAlignment: Text.AlignVCenter
                         text: pane.model ? pane.model.currentPath : ""
                         font.pixelSize: 11
-                        color: "#94A3B8"
+                        color: "#5a6472"
                         elide: Text.ElideMiddle
                     }
                 }
@@ -895,7 +846,7 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
-                Label { text: "名称"; font.pixelSize: 11; color: "#64748B" }
+                Label { text: "名称"; font.pixelSize: 11; color: "#9aa3b0" }
                 UiInput {
                     id: mkdirField
                     Layout.fillWidth: true
@@ -944,9 +895,9 @@ Item {
 
         background: Rectangle {
             radius: 12
-            color: "#131C31"
+            color: "#ffffff"
             border.width: 1
-            border.color: "#1E293B"
+            border.color: "#e3e7ee"
         }
 
         header: Item {
@@ -962,7 +913,7 @@ Item {
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
                     radius: 20
-                    color: "#1E293B"
+                    color: "#e8f0ff"
 
                     Canvas {
                         anchors.centerIn: parent
@@ -970,7 +921,7 @@ Item {
                         onPaint: {
                             var ctx = getContext("2d")
                             ctx.reset()
-                            ctx.fillStyle = "#3B82F6"
+                            ctx.fillStyle = "#5b8def"
                             ctx.beginPath()
                             ctx.moveTo(2, 2)
                             ctx.quadraticCurveTo(2, 1, 3, 1); ctx.lineTo(9, 1); ctx.lineTo(12, 4)
@@ -978,7 +929,7 @@ Item {
                             ctx.quadraticCurveTo(12, 15, 11, 15); ctx.lineTo(3, 15)
                             ctx.quadraticCurveTo(2, 15, 2, 14)
                             ctx.closePath(); ctx.fill()
-                            ctx.fillStyle = "#334155"
+                            ctx.fillStyle = "#c7d8f7"
                             ctx.beginPath()
                             ctx.moveTo(9, 1); ctx.lineTo(12, 4); ctx.lineTo(9, 4)
                             ctx.closePath(); ctx.fill()
@@ -989,8 +940,8 @@ Item {
 
                 ColumnLayout {
                     spacing: 2
-                    Label { text: "新建文件"; font.pixelSize: 15; font.bold: true; color: "#E2E8F0" }
-                    Label { text: "在当前目录下创建空文件"; font.pixelSize: 12; color: "#64748B" }
+                    Label { text: "新建文件"; font.pixelSize: 15; font.bold: true; color: "#2b3138" }
+                    Label { text: "在当前目录下创建空文件"; font.pixelSize: 12; color: "#8a93a0" }
                 }
                 Item { Layout.fillWidth: true }
             }
@@ -1004,12 +955,12 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
-                Label { text: "位置"; font.pixelSize: 11; color: "#64748B" }
+                Label { text: "位置"; font.pixelSize: 11; color: "#9aa3b0" }
                 Rectangle {
                     Layout.fillWidth: true
                     height: 30
                     radius: 6
-                    color: "#0B0F19"
+                    color: "#f5f7fa"
                     Label {
                         anchors.fill: parent
                         anchors.leftMargin: 10
@@ -1017,7 +968,7 @@ Item {
                         verticalAlignment: Text.AlignVCenter
                         text: pane.model ? pane.model.currentPath : ""
                         font.pixelSize: 11
-                        color: "#94A3B8"
+                        color: "#5a6472"
                         elide: Text.ElideMiddle
                     }
                 }
@@ -1026,7 +977,7 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
-                Label { text: "名称"; font.pixelSize: 11; color: "#64748B" }
+                Label { text: "名称"; font.pixelSize: 11; color: "#9aa3b0" }
                 UiInput {
                     id: newFileField
                     Layout.fillWidth: true
@@ -1076,9 +1027,9 @@ Item {
 
         background: Rectangle {
             radius: 12
-            color: "#131C31"
+            color: "#ffffff"
             border.width: 1
-            border.color: "#1E293B"
+            border.color: "#e3e7ee"
         }
 
         header: Item {
@@ -1094,7 +1045,7 @@ Item {
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
                     radius: 20
-                    color: "#1E293B"
+                    color: "#e8f0ff"
 
                     Canvas {
                         anchors.centerIn: parent
@@ -1102,11 +1053,11 @@ Item {
                         onPaint: {
                             var ctx = getContext("2d")
                             ctx.reset()
-                            ctx.strokeStyle = "#3B82F6"
+                            ctx.strokeStyle = "#3a7afe"
                             ctx.lineWidth = 2.2
                             ctx.lineCap = "round"
                             ctx.beginPath(); ctx.moveTo(11.5, 3.5); ctx.lineTo(4.5, 10.5); ctx.stroke()
-                            ctx.fillStyle = "#3B82F6"
+                            ctx.fillStyle = "#3a7afe"
                             ctx.beginPath()
                             ctx.moveTo(2.2, 13.8); ctx.lineTo(3.4, 10.4); ctx.lineTo(5.6, 12.6)
                             ctx.closePath(); ctx.fill()
@@ -1117,8 +1068,8 @@ Item {
 
                 ColumnLayout {
                     spacing: 2
-                    Label { text: "重命名"; font.pixelSize: 15; font.bold: true; color: "#E2E8F0" }
-                    Label { text: "仅修改名称，内容不变"; font.pixelSize: 12; color: "#64748B" }
+                    Label { text: "重命名"; font.pixelSize: 15; font.bold: true; color: "#2b3138" }
+                    Label { text: "仅修改名称，内容不变"; font.pixelSize: 12; color: "#8a93a0" }
                 }
                 Item { Layout.fillWidth: true }
             }
@@ -1132,7 +1083,7 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
-                Label { text: "名称"; font.pixelSize: 11; color: "#64748B" }
+                Label { text: "名称"; font.pixelSize: 11; color: "#9aa3b0" }
                 UiInput {
                     id: renameField
                     Layout.fillWidth: true
@@ -1181,9 +1132,9 @@ Item {
 
         background: Rectangle {
             radius: 12
-            color: "#131C31"
+            color: "#ffffff"
             border.width: 1
-            border.color: "#1E293B"
+            border.color: "#e3e7ee"
         }
 
         header: Item {
@@ -1199,11 +1150,11 @@ Item {
                     Layout.preferredWidth: 40
                     Layout.preferredHeight: 40
                     radius: 20
-                    color: "#3B1D22"
+                    color: "#fdeaea"
                     Text {
                         anchors.centerIn: parent
                         text: "\u00d7"
-                        color: "#F87171"
+                        color: "#d5494e"
                         font.pixelSize: 22
                         font.bold: true
                     }
@@ -1211,8 +1162,8 @@ Item {
 
                 ColumnLayout {
                     spacing: 2
-                    Label { text: "删除确认"; font.pixelSize: 15; font.bold: true; color: "#E2E8F0" }
-                    Label { text: "此操作不可撤销"; font.pixelSize: 12; color: "#64748B" }
+                    Label { text: "删除确认"; font.pixelSize: 15; font.bold: true; color: "#2b3138" }
+                    Label { text: "此操作不可撤销"; font.pixelSize: 12; color: "#8a93a0" }
                 }
                 Item { Layout.fillWidth: true }
             }
@@ -1226,12 +1177,12 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
-                Label { text: "位置"; font.pixelSize: 11; color: "#64748B" }
+                Label { text: "位置"; font.pixelSize: 11; color: "#9aa3b0" }
                 Rectangle {
                     Layout.fillWidth: true
                     height: 30
                     radius: 6
-                    color: "#0B0F19"
+                    color: "#f5f7fa"
                     Label {
                         anchors.fill: parent
                         anchors.leftMargin: 10
@@ -1239,7 +1190,7 @@ Item {
                         verticalAlignment: Text.AlignVCenter
                         text: confirmDelete.itemPath
                         font.pixelSize: 11
-                        color: "#94A3B8"
+                        color: "#5a6472"
                         elide: Text.ElideMiddle
                     }
                 }
@@ -1248,13 +1199,13 @@ Item {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
-                Label { text: "操作"; font.pixelSize: 11; color: "#64748B" }
+                Label { text: "操作"; font.pixelSize: 11; color: "#9aa3b0" }
                 Label {
                     Layout.fillWidth: true
                     Layout.preferredWidth: 388   // 固定内容宽度，避免 wrap 文本与 Dialog contentHeight 互相触发绑定环
                     wrapMode: Text.Wrap
                     font.pixelSize: 13
-                    color: "#CBD5E1"
+                    color: "#3a414a"
                     text: confirmDelete.message
                 }
             }

@@ -63,9 +63,9 @@ Item {
         id: crumbBg
         anchors.fill: parent
         radius: 6
-        color: "#0B0F19"
+        color: "#ffffff"
         border.width: 1
-        border.color: crumbHover.hovered ? "#334155" : "#1E293B"
+        border.color: crumbHover.hovered ? "#b9c4d2" : "#d8dee7"
         visible: !root.editing
 
         // 背景层：空白处双击进入编辑（段在其上层，自行处理点击）
@@ -90,12 +90,12 @@ Item {
                 width: 6
                 height: 6
                 radius: 3
-                color: "#10B981"
+                color: "#2fa356"
             }
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.hostBadge
-                color: "#10B981"
+                color: "#2fa356"
                 font.pixelSize: 11
                 font.bold: true
             }
@@ -103,7 +103,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 1
                 height: 13
-                color: "#1E293B"
+                color: "#e3e7ee"
             }
         }
 
@@ -153,7 +153,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: index > 1        // 🏠 与第一级目录之间不显示分隔符
                             text: "›"
-                            color: "#334155"
+                            color: "#b6bfcc"
                             font.pixelSize: 12
                         }
 
@@ -162,13 +162,13 @@ Item {
                             height: 22
                             radius: 5
                             width: segText.implicitWidth + 12
-                            color: (segMa.containsMouse && !segDelegate.isLast) ? "#1E293B" : "transparent"
+                            color: (segMa.containsMouse && !segDelegate.isLast) ? "#eef3fb" : "transparent"
 
                             Text {
                                 id: segText
                                 anchors.centerIn: parent
                                 text: modelData.name
-                                color: segDelegate.isLast ? "#60A5FA" : "#CBD5E1"
+                                color: segDelegate.isLast ? "#1a4e8a" : "#3a414a"
                                 font.pixelSize: 12
                                 font.bold: segDelegate.isLast
                             }

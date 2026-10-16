@@ -14,17 +14,17 @@ CheckBox {
         x: control.leftPadding
         y: control.height / 2 - height / 2
         radius: 4
-        color: control.checked ? "#3B82F6" : "#131C31"
+        color: control.checked ? "#3a7afe" : "#ffffff"
         border.width: 1
-        border.color: control.checked ? "#3B82F6"
-                    : control.hovered ? "#334155"
-                    : "#475569"
+        border.color: control.checked ? "#3a7afe"
+                    : control.hovered ? "#b9c4d2"
+                    : "#c6cfd9"
 
         Text {
             anchors.centerIn: parent
             visible: control.checked
             text: "\u2713"
-            color: "#131C31"
+            color: "#ffffff"
             font.pixelSize: 11
             font.bold: true
         }
@@ -33,7 +33,7 @@ CheckBox {
     contentItem: Text {
         text: control.text
         font: control.font
-        color: "#CBD5E1"
+        color: "#3a414a"
         leftPadding: control.indicator.width + control.spacing
         verticalAlignment: Text.AlignVCenter
     }
